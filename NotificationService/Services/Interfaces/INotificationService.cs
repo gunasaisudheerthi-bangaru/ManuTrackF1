@@ -1,0 +1,18 @@
+﻿using ManuTrack.SharedKernel.Responses;
+using NotificationService.DTOs;
+using NotificationService.DTOs;
+
+namespace NotificationService.Services.Interfaces;
+
+public interface INotificationService
+{
+    Task<ApiResponse<IEnumerable<NotificationViewModel>>> GetForUserAsync(int userId, string? status, string? category);
+    Task<ApiResponse<IEnumerable<NotificationViewModel>>> GetAllAsync(string? category, string? status);
+    Task<ApiResponse<NotificationViewModel>> GetByIdAsync(int id);
+    Task<ApiResponse<NotificationViewModel>> SendAsync(SendNotificationRequest request);
+    Task<ApiResponse<IEnumerable<NotificationViewModel>>> BroadcastAsync(BroadcastNotificationRequest request);
+    Task<ApiResponse<NotificationViewModel>> MarkAsReadAsync(int id);
+    Task<ApiResponse> MarkAllAsReadAsync(int userId);
+    Task<ApiResponse<int>> GetUnreadCountAsync(int userId);
+}
+

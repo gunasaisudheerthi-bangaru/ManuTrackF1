@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/Frontend/" />
+  <Folder Name="/Gateway/">
+    <Project Path="ApiGateway/ApiGateway.csproj" />
+  </Folder>
+  <Folder Name="/Microservices/">
+    <Project Path="AnalyticsService/AnalyticsService.csproj" />
+    <Project Path="AuthService/AuthService.csproj" Id="fb5aa015-796e-47c2-94c5-de52a0afbdba" />
+    <Project Path="ComplianceService/ComplianceService.csproj" />
+    <Project Path="InventoryService/InventoryService.csproj" />
+    <Project Path="NotificationService/NotificationService.csproj" />
+    <Project Path="ProductService/ProductService.csproj" Id="930963f3-15a4-4ad9-9926-39c32565958f" />
+    <Project Path="QualityService/QualityService.csproj" />
+    <Project Path="WorkOrderService/WorkOrderService.csproj" />
+  </Folder>
+  <Folder Name="/shared/">
+    <Project Path="ManuTrack.SharedKernel/ManuTrack.SharedKernel.csproj" />
+  </Folder>
+</Solution>

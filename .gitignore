@@ -1,0 +1,27 @@
+## Build output
+**/bin/
+**/obj/
+**/dist/
+
+## VS user files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+
+## Angular cache
+**/.angular/
+
+## Node modules
+**/node_modules/
+
+## Logs
+*.log
+
+## Environment / secrets
+**/appsettings.Development.json
+**/*.pfx
+
+## Docker
+**/.dockerignore

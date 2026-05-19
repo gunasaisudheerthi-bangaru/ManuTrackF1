@@ -30,6 +30,12 @@ namespace WorkOrderService.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("WorkOrderID"));
 
+                    b.Property<DateTime?>("ActualEndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ActualStartDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<int?>("AssignedOperatorID")
                         .HasColumnType("int");
 
@@ -44,6 +50,12 @@ namespace WorkOrderService.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("EstimatedEndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("EstimatedStartDate")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("ModifiedDate")
@@ -150,4 +162,3 @@ namespace WorkOrderService.Migrations
         }
     }
 }
-

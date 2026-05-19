@@ -1,6 +1,5 @@
-﻿using ComplianceService.DTOs;
-using ComplianceService.Models;
 using ComplianceService.DTOs;
+using ComplianceService.Models;
 using ComplianceService.Repositories.Interfaces;
 using ComplianceService.Services.Interfaces;
 using ManuTrack.SharedKernel.Exceptions;
@@ -10,16 +9,24 @@ namespace ComplianceService.Services;
 
 public class AuditServiceImpl(IAuditRepository repo) : IAuditService
 {
+    // Change 5: pass all new filters through to repository
     public async Task<ApiResponse<IEnumerable<AuditEntryViewModel>>> GetAllAsync(
-        string? userId, string? serviceName, DateTime? from, DateTime? to)
+        string? userId,
+        string? serviceName,
+        DateTime? from,
+        DateTime? to,
+        string? entityType,
+        string? action,
+        string? entityId)
     {
-        var entries = await repo.GetAllAsync(userId, serviceName, from, to);
+        var entries = await repo.GetAllAsync(userId, serviceName, from, to, entityType, action, entityId);
         return ApiResponse<IEnumerable<AuditEntryViewModel>>.Ok(entries.Select(Map));
     }
 
     public async Task<ApiResponse<AuditEntryViewModel>> GetByIdAsync(int id)
     {
-        var entry = await repo.GetByIdAsync(id) ?? throw new NotFoundException($"Audit entry {id} not found.");
+        var entry = await repo.GetByIdAsync(id)
+            ?? throw new NotFoundException($"Audit entry {id} not found.");
         return ApiResponse<AuditEntryViewModel>.Ok(Map(entry));
     }
 
@@ -54,4 +61,3 @@ public class AuditServiceImpl(IAuditRepository repo) : IAuditService
         Timestamp = a.Timestamp
     };
 }
-

@@ -60,5 +60,9 @@ public class InspectionViewModel
     public string? Notes { get; set; }
     public DateTime CreatedDate { get; set; }
     public DateTime? UpdatedDate { get; set; }
-    public int DefectCount { get; set; }
+    public int TotalDefectCount { get; set; }
+    public int CriticalCount { get; set; }
+    public int HighCount { get; set; }
+    public int MediumCount { get; set; }
+    public int LowCount { get; set; }
 }

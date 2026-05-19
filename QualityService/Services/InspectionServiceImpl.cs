@@ -1,3 +1,6 @@
+using System.Net.Http.Json;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using QualityService.Enums;
 using ManuTrack.SharedKernel.Exceptions;
 using ManuTrack.SharedKernel.Responses;
@@ -8,8 +11,88 @@ using QualityService.Services.Interfaces;
 
 namespace QualityService.Services;
 
-public class InspectionServiceImpl(IInspectionRepository repo) : IInspectionService
+public class InspectionServiceImpl(
+    IInspectionRepository repo,
+    IHttpClientFactory httpClientFactory,
+    IHttpContextAccessor httpContextAccessor) : IInspectionService
 {
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private string? GetBearerToken()
+    {
+        var auth = httpContextAccessor.HttpContext?.Request.Headers["Authorization"].ToString();
+        return auth?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true
+            ? auth["Bearer ".Length..] : null;
+    }
+
+    private (int UserId, string UserName) GetCurrentUser()
+    {
+        var user = httpContextAccessor.HttpContext?.User;
+        var idVal = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                 ?? user?.FindFirst("sub")?.Value;
+        var name = user?.FindFirst(ClaimTypes.Name)?.Value
+                ?? user?.FindFirst("name")?.Value
+                ?? "Unknown";
+        int.TryParse(idVal, out var id);
+        return (id, name);
+    }
+
+    private HttpClient CreateAuthorizedClient(string clientName)
+    {
+        var client = httpClientFactory.CreateClient(clientName);
+        var token = GetBearerToken();
+        if (token != null)
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        return client;
+    }
+
+    // ── Change 1: Audit logging (fire-and-forget) ─────────────────────────────
+    private async Task LogAuditAsync(string action, string entityType, string entityId, string? details = null)
+    {
+        try
+        {
+            var (userId, userName) = GetCurrentUser();
+            if (userId == 0) return;
+
+            var client = CreateAuthorizedClient("ComplianceService");
+            await client.PostAsJsonAsync("api/v1/audit", new
+            {
+                UserID = userId,
+                UserName = userName,
+                Action = action,
+                EntityType = entityType,
+                EntityID = entityId,
+                ServiceName = "QualityService",
+                Details = details
+            });
+        }
+        catch { /* fire-and-forget */ }
+    }
+
+    // ── Change 3: Fail inspection notification (fire-and-forget) ──────────────
+    private async Task NotifyInspectionFailedAsync(int inspectionId, int workOrderId)
+    {
+        try
+        {
+            var (userId, _) = GetCurrentUser();
+            if (userId == 0) return;
+
+            var client = CreateAuthorizedClient("NotificationService");
+            await client.PostAsJsonAsync("api/v1/notifications", new
+            {
+                UserID = userId,
+                Title = "Inspection Failed",
+                Message = $"Inspection #{inspectionId} failed for Work Order #{workOrderId}. " +
+                          "Please review defects reported.",
+                Category = "Quality"
+            });
+        }
+        catch { /* fire-and-forget */ }
+    }
+
+    // ── CRUD ──────────────────────────────────────────────────────────────────
+
     public async Task<ApiResponse<IEnumerable<InspectionViewModel>>> GetAllAsync(string? status, int? workOrderId)
     {
         var items = await repo.GetAllAsync(status, workOrderId);
@@ -25,6 +108,9 @@ public class InspectionServiceImpl(IInspectionRepository repo) : IInspectionServ
 
     public async Task<ApiResponse<InspectionViewModel>> CreateAsync(CreateInspectionRequest request)
     {
+        // Change 6: check WorkOrder status before creating inspection
+        await ValidateWorkOrderStatusAsync(request.WorkOrderID);
+
         var inspection = new Inspection
         {
             WorkOrderID = request.WorkOrderID,
@@ -38,6 +124,10 @@ public class InspectionServiceImpl(IInspectionRepository repo) : IInspectionServ
         };
 
         var created = await repo.CreateAsync(inspection);
+
+        await LogAuditAsync("Created Inspection", "Inspection", created.InspectionID.ToString(),
+            $"WorkOrderID: {created.WorkOrderID}, Inspector: {created.InspectorName}");
+
         return ApiResponse<InspectionViewModel>.Ok(Map(created), "Inspection created.");
     }
 
@@ -52,9 +142,47 @@ public class InspectionServiceImpl(IInspectionRepository repo) : IInspectionServ
         inspection.UpdatedDate = DateTime.UtcNow;
 
         var updated = await repo.UpdateAsync(inspection);
+
+        await LogAuditAsync("Updated Inspection Result", "Inspection", id.ToString(),
+            $"Result: {request.Result}, Status: {request.Status}");
+
+        // Change 3: notify if result is Fail
+        if (request.Result == InspectionResult.Fail)
+            await NotifyInspectionFailedAsync(id, inspection.WorkOrderID);
+
         return ApiResponse<InspectionViewModel>.Ok(Map(updated), "Inspection result updated.");
     }
 
+    // ── Change 6: Validate WorkOrder status before inspection ─────────────────
+    private async Task ValidateWorkOrderStatusAsync(int workOrderId)
+    {
+        try
+        {
+            var client = CreateAuthorizedClient("WorkOrderService");
+            var response = await client.GetAsync($"api/v1/workorders/{workOrderId}");
+            if (!response.IsSuccessStatusCode) return; // if WO service down, allow through
+
+            var result = await response.Content
+                .ReadFromJsonAsync<WorkOrderResponseDto>(
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            var status = result?.Data?.Status;
+            if (status == null) return;
+
+            if (status == "Cancelled")
+                throw new ValidationException("Cannot create inspection for a cancelled work order.");
+
+            if (status == "Pending" || status == "Scheduled")
+                throw new ValidationException(
+                    "Cannot create inspection for a work order that has not started yet.");
+        }
+        catch (ValidationException) { throw; }
+        catch { /* WorkOrderService unavailable — allow through */ }
+    }
+
+    // ── Mapper ────────────────────────────────────────────────────────────────
+
+    // Change 5: calculated defect breakdown
     private static InspectionViewModel Map(Inspection i) => new()
     {
         InspectionID = i.InspectionID,
@@ -67,6 +195,21 @@ public class InspectionServiceImpl(IInspectionRepository repo) : IInspectionServ
         Notes = i.Notes,
         CreatedDate = i.CreatedDate,
         UpdatedDate = i.UpdatedDate,
-        DefectCount = i.Defects.Count
+        TotalDefectCount = i.Defects.Count,
+        CriticalCount = i.Defects.Count(d => d.Severity == "Critical"),
+        HighCount = i.Defects.Count(d => d.Severity == "High"),
+        MediumCount = i.Defects.Count(d => d.Severity == "Medium"),
+        LowCount = i.Defects.Count(d => d.Severity == "Low")
     };
+
+    // ── Local DTOs for WorkOrderService response ──────────────────────────────
+    private sealed class WorkOrderResponseDto
+    {
+        public WorkOrderDataDto? Data { get; set; }
+    }
+
+    private sealed class WorkOrderDataDto
+    {
+        public string Status { get; set; } = string.Empty;
+    }
 }

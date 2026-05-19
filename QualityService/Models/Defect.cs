@@ -7,7 +7,7 @@ public class Defect
     public string Description { get; set; } = string.Empty;
     public string Severity { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
-    public string? Resolution { get; set; }
+    public string? ResolutionDescription { get; set; }
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedDate { get; set; }
     public DateTime? ResolvedDate { get; set; }

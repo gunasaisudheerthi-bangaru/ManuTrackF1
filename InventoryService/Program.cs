@@ -61,10 +61,21 @@ builder.Services.AddAuthorization();
 builder.Services.AddCors(o => o.AddPolicy("AllowAll",
     p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient("ComplianceService", client =>
+    client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:ComplianceService"]!));
+builder.Services.AddHttpClient("NotificationService", client =>
+    client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:NotificationService"]!));
+
 builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
 builder.Services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
+builder.Services.AddScoped<IStockMovementRepository, StockMovementRepository>();
+builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
+builder.Services.AddScoped<ILocationRepository, LocationRepository>();
 builder.Services.AddScoped<IInventoryService, InventoryServiceImpl>();
 builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderServiceImpl>();
+builder.Services.AddScoped<ISupplierService, SupplierServiceImpl>();
+builder.Services.AddScoped<ILocationService, LocationServiceImpl>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {

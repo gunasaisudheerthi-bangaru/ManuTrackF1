@@ -61,6 +61,16 @@ builder.Services.AddAuthorization();
 builder.Services.AddCors(o => o.AddPolicy("AllowAll",
     p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient("ComplianceService", client =>
+    client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:ComplianceService"]!));
+builder.Services.AddHttpClient("WorkOrderService", client =>
+    client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:WorkOrderService"]!));
+builder.Services.AddHttpClient("InventoryService", client =>
+    client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:InventoryService"]!));
+builder.Services.AddHttpClient("QualityService", client =>
+    client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:QualityService"]!));
+
 builder.Services.AddScoped<IKpiReportRepository, KpiReportRepository>();
 builder.Services.AddScoped<IProductionMetricRepository, ProductionMetricRepository>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsServiceImpl>();

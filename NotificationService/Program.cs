@@ -61,6 +61,10 @@ builder.Services.AddAuthorization();
 builder.Services.AddCors(o => o.AddPolicy("AllowAll",
     p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient("ComplianceService", client =>
+    client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:ComplianceService"]!));
+
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<INotificationService, NotificationServiceImpl>();
 builder.Services.AddEndpointsApiExplorer();

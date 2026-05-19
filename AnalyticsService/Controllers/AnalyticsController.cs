@@ -12,12 +12,14 @@ namespace AnalyticsService.Controllers;
 [Authorize]
 public class AnalyticsController(IAnalyticsService service) : ControllerBase
 {
+    // Change 4: enriched cross-service dashboard
     [HttpGet("dashboard")]
     public async Task<ActionResult<ApiResponse<DashboardSummaryViewModel>>> GetDashboard()
         => Ok(await service.GetDashboardSummaryAsync());
 
     [HttpGet("reports")]
-    public async Task<ActionResult<ApiResponse<IEnumerable<KpiReportViewModel>>>> GetReports([FromQuery] string? reportType)
+    public async Task<ActionResult<ApiResponse<IEnumerable<KpiReportViewModel>>>> GetReports(
+        [FromQuery] string? reportType)
         => Ok(await service.GetAllReportsAsync(reportType));
 
     [HttpGet("reports/{id:int}")]
@@ -26,22 +28,27 @@ public class AnalyticsController(IAnalyticsService service) : ControllerBase
 
     [HttpPost("reports")]
     [Authorize(Roles = "Admin,ComplianceOfficer,Planner")]
-    public async Task<ActionResult<ApiResponse<KpiReportViewModel>>> GenerateReport([FromBody] GenerateKpiReportRequest request)
+    public async Task<ActionResult<ApiResponse<KpiReportViewModel>>> GenerateReport(
+        [FromBody] GenerateKpiReportRequest request)
     {
         var generatedBy = JwtHelper.GetName(User) ?? JwtHelper.GetUserId(User).ToString();
         var result = await service.GenerateReportAsync(request, generatedBy);
         return CreatedAtAction(nameof(GetReportById), new { id = result.Data!.ReportID }, result);
     }
 
+    // Change 3: paginated metrics endpoint
     [HttpGet("metrics")]
-    public async Task<ActionResult<ApiResponse<IEnumerable<ProductionMetricViewModel>>>> GetMetrics(
+    public async Task<ActionResult<ApiResponse<PagedMetricsViewModel>>> GetMetrics(
         [FromQuery] string? metricType,
         [FromQuery] string? serviceSource,
         [FromQuery] DateTime? from,
-        [FromQuery] DateTime? to)
-        => Ok(await service.GetMetricsAsync(metricType, serviceSource, from, to));
+        [FromQuery] DateTime? to,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
+        => Ok(await service.GetMetricsAsync(metricType, serviceSource, from, to, page, pageSize));
 
     [HttpPost("metrics")]
-    public async Task<ActionResult<ApiResponse<ProductionMetricViewModel>>> RecordMetric([FromBody] RecordMetricRequest request)
+    public async Task<ActionResult<ApiResponse<ProductionMetricViewModel>>> RecordMetric(
+        [FromBody] RecordMetricRequest request)
         => Ok(await service.RecordMetricAsync(request));
 }

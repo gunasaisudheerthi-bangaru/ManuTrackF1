@@ -30,7 +30,7 @@ public class QualityDbContext(DbContextOptions<QualityDbContext> options) : DbCo
             e.Property(d => d.Description).IsRequired().HasMaxLength(500);
             e.Property(d => d.Severity).IsRequired().HasMaxLength(50);
             e.Property(d => d.Status).IsRequired().HasMaxLength(50).HasDefaultValue("Open");
-            e.Property(d => d.Resolution).HasMaxLength(1000);
+            e.Property(d => d.ResolutionDescription).HasMaxLength(1000);
 
             e.HasOne(d => d.Inspection)
              .WithMany(i => i.Defects)

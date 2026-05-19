@@ -38,10 +38,20 @@ namespace NotificationService.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Message")
                         .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Medium");
 
                     b.Property<DateTime?>("ReadDate")
                         .HasColumnType("datetime2");
@@ -62,7 +72,6 @@ namespace NotificationService.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<int>("UserID")
-                        .HasMaxLength(100)
                         .HasColumnType("int");
 
                     b.HasKey("NotificationID");
@@ -70,6 +79,10 @@ namespace NotificationService.Migrations
                     b.HasIndex("Category");
 
                     b.HasIndex("CreatedDate");
+
+                    b.HasIndex("ExpiryDate");
+
+                    b.HasIndex("Priority");
 
                     b.HasIndex("Status");
 
@@ -81,4 +94,3 @@ namespace NotificationService.Migrations
         }
     }
 }
-

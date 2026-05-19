@@ -9,7 +9,7 @@ public class WorkOrderRepository(WorkOrderDbContext db) : IWorkOrderRepository
 {
     public async Task<IEnumerable<WorkOrder>> GetAllAsync(string? status = null, int? productId = null)
     {
-        var query = db.WorkOrders.AsQueryable();
+        var query = db.WorkOrders.Include(w => w.Tasks).AsQueryable();
         if (!string.IsNullOrWhiteSpace(status))
             query = query.Where(w => w.Status == status);
         if (productId.HasValue)

@@ -1,3 +1,6 @@
+using System.Net.Http.Json;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using WorkOrderService.Enums;
 using ManuTrack.SharedKernel.Exceptions;
 using ManuTrack.SharedKernel.Responses;
@@ -8,8 +11,62 @@ using WorkOrderService.Services.Interfaces;
 
 namespace WorkOrderService.Services;
 
-public class WorkOrderTaskServiceImpl(IWorkOrderTaskRepository taskRepo, IWorkOrderRepository workOrderRepo) : IWorkOrderTaskService
+public class WorkOrderTaskServiceImpl(
+    IWorkOrderTaskRepository taskRepo,
+    IWorkOrderRepository workOrderRepo,
+    IHttpClientFactory httpClientFactory,
+    IHttpContextAccessor httpContextAccessor) : IWorkOrderTaskService
 {
+    // ── Helpers ─────────────────────────────────────────────────────────────
+
+    private string? GetBearerToken()
+    {
+        var auth = httpContextAccessor.HttpContext?.Request.Headers["Authorization"].ToString();
+        return auth?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true
+            ? auth["Bearer ".Length..] : null;
+    }
+
+    private (int UserId, string UserName) GetCurrentUser()
+    {
+        var user = httpContextAccessor.HttpContext?.User;
+        var idVal = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                 ?? user?.FindFirst("sub")?.Value;
+        var name = user?.FindFirst(ClaimTypes.Name)?.Value
+                ?? user?.FindFirst("name")?.Value
+                ?? "Unknown";
+        int.TryParse(idVal, out var id);
+        return (id, name);
+    }
+
+    private async Task LogAuditAsync(string action, string entityType, string entityId, string? details = null)
+    {
+        try
+        {
+            var (userId, userName) = GetCurrentUser();
+            if (userId == 0) return;
+
+            var client = httpClientFactory.CreateClient("ComplianceService");
+            var token = GetBearerToken();
+            if (token != null)
+                client.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            await client.PostAsJsonAsync("api/v1/audit", new
+            {
+                UserID = userId,
+                UserName = userName,
+                Action = action,
+                EntityType = entityType,
+                EntityID = entityId,
+                ServiceName = "WorkOrderService",
+                Details = details
+            });
+        }
+        catch { /* fire-and-forget: never fail the main operation */ }
+    }
+
+    // ── CRUD ─────────────────────────────────────────────────────────────────
+
     public async Task<ApiResponse<IEnumerable<WorkOrderTaskViewModel>>> GetByWorkOrderIdAsync(int workOrderId)
     {
         if (!await workOrderRepo.ExistsAsync(workOrderId))
@@ -42,6 +99,10 @@ public class WorkOrderTaskServiceImpl(IWorkOrderTaskRepository taskRepo, IWorkOr
         };
 
         var created = await taskRepo.CreateAsync(task);
+
+        await LogAuditAsync("Created Task", "WorkOrderTask", created.TaskID.ToString(),
+            $"WorkOrderID: {created.WorkOrderID}, AssignedTo: {created.AssignedTo}");
+
         return ApiResponse<WorkOrderTaskViewModel>.Ok(Map(created), "Task created successfully.");
     }
 
@@ -56,6 +117,10 @@ public class WorkOrderTaskServiceImpl(IWorkOrderTaskRepository taskRepo, IWorkOr
         task.UpdatedDate = DateTime.UtcNow;
 
         var updated = await taskRepo.UpdateAsync(task);
+
+        await LogAuditAsync("Updated Task", "WorkOrderTask", id.ToString(),
+            $"AssignedTo: {updated.AssignedTo}, Description: {updated.Description}");
+
         return ApiResponse<WorkOrderTaskViewModel>.Ok(Map(updated), "Task updated successfully.");
     }
 
@@ -70,6 +135,10 @@ public class WorkOrderTaskServiceImpl(IWorkOrderTaskRepository taskRepo, IWorkOr
         task.UpdatedDate = DateTime.UtcNow;
 
         var updated = await taskRepo.UpdateAsync(task);
+
+        await LogAuditAsync("Updated Task Status", "WorkOrderTask", id.ToString(),
+            $"New Status: {request.Status}");
+
         return ApiResponse<WorkOrderTaskViewModel>.Ok(Map(updated), "Task status updated.");
     }
 
@@ -79,8 +148,14 @@ public class WorkOrderTaskServiceImpl(IWorkOrderTaskRepository taskRepo, IWorkOr
             ?? throw new NotFoundException($"Task {id} not found.");
 
         await taskRepo.DeleteAsync(task);
+
+        await LogAuditAsync("Deleted Task", "WorkOrderTask", id.ToString(),
+            $"WorkOrderID: {task.WorkOrderID}, AssignedTo: {task.AssignedTo}");
+
         return ApiResponse.Ok("Task deleted successfully.");
     }
+
+    // ── Mapper ───────────────────────────────────────────────────────────────
 
     private static WorkOrderTaskViewModel Map(WorkOrderTask t) => new()
     {

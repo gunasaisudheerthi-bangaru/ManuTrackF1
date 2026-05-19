@@ -13,15 +13,21 @@ public class NotificationDbContext(DbContextOptions<NotificationDbContext> optio
         {
             e.HasKey(n => n.NotificationID);
             e.Property(n => n.NotificationID).ValueGeneratedOnAdd();
-            e.Property(n => n.UserID).IsRequired().HasMaxLength(100);
+            e.Property(n => n.UserID).IsRequired();
             e.Property(n => n.Title).IsRequired().HasMaxLength(200);
             e.Property(n => n.Message).IsRequired().HasMaxLength(2000);
             e.Property(n => n.Category).IsRequired().HasMaxLength(100);
             e.Property(n => n.Status).IsRequired().HasMaxLength(50).HasDefaultValue("Unread");
+            // Change 5: priority column
+            e.Property(n => n.Priority).IsRequired().HasMaxLength(20).HasDefaultValue("Medium");
+            // Change 6: expiry column (nullable)
+            e.Property(n => n.ExpiryDate).IsRequired(false);
             e.HasIndex(n => n.UserID);
             e.HasIndex(n => n.Status);
             e.HasIndex(n => n.Category);
             e.HasIndex(n => n.CreatedDate);
+            e.HasIndex(n => n.Priority);
+            e.HasIndex(n => n.ExpiryDate);
         });
     }
 }

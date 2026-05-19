@@ -41,7 +41,7 @@ namespace QualityService.Migrations
                     b.Property<int>("InspectionID")
                         .HasColumnType("int");
 
-                    b.Property<string>("Resolution")
+                    b.Property<string>("ResolutionDescription")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
@@ -148,4 +148,3 @@ namespace QualityService.Migrations
         }
     }
 }
-

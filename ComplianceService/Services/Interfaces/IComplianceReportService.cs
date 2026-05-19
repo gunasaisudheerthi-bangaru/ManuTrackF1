@@ -1,4 +1,3 @@
-﻿using ComplianceService.DTOs;
 using ComplianceService.DTOs;
 using ManuTrack.SharedKernel.Responses;
 
@@ -8,8 +7,8 @@ public interface IComplianceReportService
 {
     Task<ApiResponse<IEnumerable<ComplianceReportViewModel>>> GetAllAsync(string? status, string? reportType);
     Task<ApiResponse<ComplianceReportViewModel>> GetByIdAsync(int id);
-    Task<ApiResponse<ComplianceReportViewModel>> CreateAsync(CreateComplianceReportRequest request, string generatedBy);
+    // generatedBy extracted from JWT internally — no longer a parameter
+    Task<ApiResponse<ComplianceReportViewModel>> CreateAsync(CreateComplianceReportRequest request);
     Task<ApiResponse<ComplianceReportViewModel>> UpdateStatusAsync(int id, UpdateReportStatusRequest request);
     Task<ApiResponse<ComplianceReportViewModel>> ApproveReportAsync(int id, ApproveReportRequest request);
 }
-

@@ -33,10 +33,8 @@ namespace InventoryService.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("LocationID")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                    b.Property<int?>("LocationID")
+                        .HasColumnType("int");
 
                     b.Property<decimal>("MinimumQuantity")
                         .HasColumnType("decimal(18,4)");
@@ -64,7 +62,7 @@ namespace InventoryService.Migrations
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)")
-                        .HasDefaultValue("Available");
+                        .HasDefaultValue("InStock");
 
                     b.HasKey("InventoryID");
 
@@ -72,7 +70,47 @@ namespace InventoryService.Migrations
 
                     b.HasIndex("ProductID");
 
+                    b.HasIndex("Status");
+
                     b.ToTable("InventoryItems");
+                });
+
+            modelBuilder.Entity("InventoryService.Models.InventoryLocation", b =>
+                {
+                    b.Property<int>("LocationID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LocationID"));
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("LocationID");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("InventoryLocations");
                 });
 
             modelBuilder.Entity("InventoryService.Models.PurchaseOrder", b =>
@@ -108,32 +146,44 @@ namespace InventoryService.Migrations
 
                     b.Property<string>("SupplierID")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(100)")
+                        .HasDefaultValue("");
 
                     b.Property<string>("SupplierName")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("nvarchar(200)")
+                        .HasDefaultValue("");
+
+                    b.Property<int?>("SupplierRefID")
+                        .HasColumnType("int");
 
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("POID");
 
+                    b.HasIndex("SupplierRefID");
+
                     b.ToTable("PurchaseOrders");
                 });
 
             modelBuilder.Entity("InventoryService.Models.PurchaseOrderItem", b =>
                 {
-                    b.Property<int>("ItemID")
+                    b.Property<int>("POItemID")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ItemID"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("POItemID"));
 
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("InventoryID")
+                        .HasColumnType("int");
 
                     b.Property<int>("POID")
                         .HasColumnType("int");
@@ -149,33 +199,180 @@ namespace InventoryService.Migrations
                     b.Property<decimal>("Quantity")
                         .HasColumnType("decimal(18,4)");
 
+                    b.Property<decimal>("ReceivedQty")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("TotalPrice")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<decimal>("UnitPrice")
                         .HasColumnType("decimal(18,2)");
 
-                    b.HasKey("ItemID");
+                    b.HasKey("POItemID");
+
+                    b.HasIndex("InventoryID");
 
                     b.HasIndex("POID");
 
                     b.ToTable("PurchaseOrderItems");
                 });
 
+            modelBuilder.Entity("InventoryService.Models.StockMovement", b =>
+                {
+                    b.Property<int>("MovementID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MovementID"));
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("InventoryID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MovementType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("PerformedBy")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ReferenceID")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("MovementID");
+
+                    b.HasIndex("InventoryID");
+
+                    b.ToTable("StockMovements");
+                });
+
+            modelBuilder.Entity("InventoryService.Models.Supplier", b =>
+                {
+                    b.Property<int>("SupplierID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SupplierID"));
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ContactPerson")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("SupplierID");
+
+                    b.ToTable("Suppliers");
+                });
+
+            modelBuilder.Entity("InventoryService.Models.InventoryItem", b =>
+                {
+                    b.HasOne("InventoryService.Models.InventoryLocation", "Location")
+                        .WithMany("InventoryItems")
+                        .HasForeignKey("LocationID")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Location");
+                });
+
+            modelBuilder.Entity("InventoryService.Models.PurchaseOrder", b =>
+                {
+                    b.HasOne("InventoryService.Models.Supplier", "Supplier")
+                        .WithMany("PurchaseOrders")
+                        .HasForeignKey("SupplierRefID")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Supplier");
+                });
+
             modelBuilder.Entity("InventoryService.Models.PurchaseOrderItem", b =>
                 {
+                    b.HasOne("InventoryService.Models.InventoryItem", "InventoryItem")
+                        .WithMany()
+                        .HasForeignKey("InventoryID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("InventoryService.Models.PurchaseOrder", "PurchaseOrder")
                         .WithMany("Items")
                         .HasForeignKey("POID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("InventoryItem");
+
                     b.Navigation("PurchaseOrder");
+                });
+
+            modelBuilder.Entity("InventoryService.Models.StockMovement", b =>
+                {
+                    b.HasOne("InventoryService.Models.InventoryItem", "InventoryItem")
+                        .WithMany("StockMovements")
+                        .HasForeignKey("InventoryID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("InventoryItem");
+                });
+
+            modelBuilder.Entity("InventoryService.Models.InventoryItem", b =>
+                {
+                    b.Navigation("StockMovements");
+                });
+
+            modelBuilder.Entity("InventoryService.Models.InventoryLocation", b =>
+                {
+                    b.Navigation("InventoryItems");
                 });
 
             modelBuilder.Entity("InventoryService.Models.PurchaseOrder", b =>
                 {
                     b.Navigation("Items");
                 });
+
+            modelBuilder.Entity("InventoryService.Models.Supplier", b =>
+                {
+                    b.Navigation("PurchaseOrders");
+                });
 #pragma warning restore 612, 618
         }
     }
 }
-

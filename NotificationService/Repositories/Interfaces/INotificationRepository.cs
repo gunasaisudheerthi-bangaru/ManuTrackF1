@@ -1,4 +1,4 @@
-﻿using NotificationService.Models;
+using NotificationService.Models;
 
 namespace NotificationService.Repositories.Interfaces;
 
@@ -10,6 +10,11 @@ public interface INotificationRepository
     Task<Notification> CreateAsync(Notification notification);
     Task<IEnumerable<Notification>> CreateBulkAsync(IEnumerable<Notification> notifications);
     Task<Notification> UpdateAsync(Notification notification);
-    Task<int> GetUnreadCountAsync(int userId);
-}
 
+    // Change 4: grouped unread count by category
+    Task<Dictionary<string, int>> GetUnreadCountByCategoryAsync(int userId);
+
+    // Change 7: delete helpers
+    Task<int> DeleteReadByUserAsync(int userId);
+    Task<int> DeleteOlderThanAsync(DateTime cutoff);
+}

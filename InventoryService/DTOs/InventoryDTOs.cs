@@ -13,11 +13,9 @@ public class CreateInventoryItemRequest
     [MaxLength(200, ErrorMessage = "Product name cannot exceed 200 characters.")]
     public string ProductName { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "LocationID is required.")]
-    [MinLength(1, ErrorMessage = "LocationID cannot be empty.")]
-    [MaxLength(100, ErrorMessage = "LocationID cannot exceed 100 characters.")]
-    [RegularExpression(@"^[A-Za-z0-9\-_]+$", ErrorMessage = "LocationID may only contain letters, numbers, hyphens, and underscores.")]
-    public string LocationID { get; set; } = string.Empty;
+    // Changed: nullable int FK to InventoryLocation
+    [Range(1, int.MaxValue, ErrorMessage = "LocationID must be a positive integer.")]
+    public int? LocationID { get; set; }
 
     [Required(ErrorMessage = "Quantity on hand is required.")]
     [Range(0, 9999999.9999, ErrorMessage = "Quantity on hand must be between 0 and 9,999,999.")]
@@ -32,10 +30,9 @@ public class CreateInventoryItemRequest
 
 public class UpdateInventoryItemRequest
 {
-    [MinLength(1, ErrorMessage = "LocationID cannot be empty.")]
-    [MaxLength(100, ErrorMessage = "LocationID cannot exceed 100 characters.")]
-    [RegularExpression(@"^[A-Za-z0-9\-_]+$", ErrorMessage = "LocationID may only contain letters, numbers, hyphens, and underscores.")]
-    public string? LocationID { get; set; }
+    // Changed: nullable int FK to InventoryLocation
+    [Range(1, int.MaxValue, ErrorMessage = "LocationID must be a positive integer.")]
+    public int? LocationID { get; set; }
 
     [Range(0, 9999999.9999, ErrorMessage = "Quantity on hand must be between 0 and 9,999,999.")]
     public decimal? QuantityOnHand { get; set; }
@@ -64,7 +61,9 @@ public class InventoryItemViewModel
     public int InventoryID { get; set; }
     public int ProductID { get; set; }
     public string ProductName { get; set; } = string.Empty;
-    public string LocationID { get; set; } = string.Empty;
+    // Changed: int? + LocationName from navigation property
+    public int? LocationID { get; set; }
+    public string? LocationName { get; set; }
     public decimal QuantityOnHand { get; set; }
     public decimal MinimumQuantity { get; set; }
     public string Status { get; set; } = string.Empty;

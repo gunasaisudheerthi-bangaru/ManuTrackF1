@@ -9,6 +9,7 @@ public class GenerateKpiReportRequest : IValidatableObject
     [MaxLength(200, ErrorMessage = "Title cannot exceed 200 characters.")]
     public string Title { get; set; } = string.Empty;
 
+    // Change 1: validated against ReportType constants
     [Required(ErrorMessage = "Report type is required.")]
     [RegularExpression("^(YieldRate|DefectRate|OnTimeCompletion|ProductionVolume|InventoryTurnover|Custom)$",
         ErrorMessage = "ReportType must be one of: YieldRate, DefectRate, OnTimeCompletion, ProductionVolume, InventoryTurnover, Custom.")]
@@ -29,13 +30,13 @@ public class GenerateKpiReportRequest : IValidatableObject
     {
         if (PeriodStart.HasValue && PeriodEnd.HasValue && PeriodEnd.Value <= PeriodStart.Value)
             yield return new ValidationResult(
-                "PeriodEnd must be after PeriodStart.",
-                [nameof(PeriodEnd)]);
+                "PeriodEnd must be after PeriodStart.", [nameof(PeriodEnd)]);
     }
 }
 
 public class RecordMetricRequest
 {
+    // Change 1: validated against MetricType constants
     [Required(ErrorMessage = "Metric type is required.")]
     [RegularExpression("^(YieldRate|DefectRate|Throughput|Downtime|CycleTime|OEE|Custom)$",
         ErrorMessage = "MetricType must be one of: YieldRate, DefectRate, Throughput, Downtime, CycleTime, OEE, Custom.")]
@@ -88,9 +89,42 @@ public class ProductionMetricViewModel
     public DateTime RecordedDate { get; set; }
 }
 
+// Change 3: pagination wrapper
+public class PaginationViewModel
+{
+    public int CurrentPage { get; set; }
+    public int PageSize { get; set; }
+    public int TotalRecords { get; set; }
+    public int TotalPages { get; set; }
+}
+
+public class PagedMetricsViewModel
+{
+    public IEnumerable<ProductionMetricViewModel> Data { get; set; } = [];
+    public PaginationViewModel Pagination { get; set; } = new();
+}
+
+// Change 4: enriched dashboard with cross-service data
 public class DashboardSummaryViewModel
 {
+    // Existing local data
     public int TotalReports { get; set; }
     public int TotalMetrics { get; set; }
-    public Dictionary<string, decimal> LatestKpis { get; set; } = new();
+    public Dictionary<string, decimal> LatestKpis { get; set; } = [];
+
+    // From WorkOrderService
+    public int ActiveWorkOrders { get; set; }
+    public int OverdueWorkOrders { get; set; }
+    public int CompletedThisMonth { get; set; }
+
+    // From InventoryService
+    public int LowStockItems { get; set; }
+    public int OutOfStockItems { get; set; }
+
+    // From QualityService
+    public int OpenDefects { get; set; }
+    public int CriticalDefects { get; set; }
+
+    // From ComplianceService
+    public int PendingComplianceReports { get; set; }
 }

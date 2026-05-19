@@ -4,15 +4,13 @@ namespace InventoryService.DTOs;
 
 public class CreatePurchaseOrderRequest : IValidatableObject
 {
-    [Required(ErrorMessage = "SupplierID is required.")]
-    [MinLength(2, ErrorMessage = "SupplierID must be at least 2 characters.")]
-    [MaxLength(100, ErrorMessage = "SupplierID cannot exceed 100 characters.")]
-    public string SupplierID { get; set; } = string.Empty;
+    public int? SupplierRefID { get; set; }
 
-    [Required(ErrorMessage = "Supplier name is required.")]
-    [MinLength(2, ErrorMessage = "Supplier name must be at least 2 characters.")]
+    [MaxLength(100, ErrorMessage = "SupplierID cannot exceed 100 characters.")]
+    public string? SupplierID { get; set; }
+
     [MaxLength(200, ErrorMessage = "Supplier name cannot exceed 200 characters.")]
-    public string SupplierName { get; set; } = string.Empty;
+    public string? SupplierName { get; set; }
 
     [Required(ErrorMessage = "Expected delivery date is required.")]
     public DateTime ExpectedDeliveryDate { get; set; }
@@ -26,6 +24,11 @@ public class CreatePurchaseOrderRequest : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
+        if (SupplierRefID == null && string.IsNullOrWhiteSpace(SupplierName))
+            yield return new ValidationResult(
+                "Either SupplierRefID or SupplierName must be provided.",
+                [nameof(SupplierRefID), nameof(SupplierName)]);
+
         if (ExpectedDeliveryDate <= DateTime.UtcNow.Date)
             yield return new ValidationResult(
                 "Expected delivery date must be a future date.",
@@ -35,6 +38,10 @@ public class CreatePurchaseOrderRequest : IValidatableObject
 
 public class CreatePurchaseOrderItemRequest
 {
+    [Required(ErrorMessage = "InventoryID is required.")]
+    [Range(1, int.MaxValue, ErrorMessage = "InventoryID must be a positive integer.")]
+    public int InventoryID { get; set; }
+
     [Required(ErrorMessage = "ProductID is required.")]
     [Range(1, int.MaxValue, ErrorMessage = "ProductID must be a positive integer.")]
     public int ProductID { get; set; }
@@ -56,14 +63,15 @@ public class CreatePurchaseOrderItemRequest
 public class UpdatePurchaseOrderStatusRequest
 {
     [Required(ErrorMessage = "Status is required.")]
-    [RegularExpression("^(Pending|Approved|Delivered|Cancelled)$",
-        ErrorMessage = "Status must be one of: Pending, Approved, Delivered, Cancelled.")]
+    [RegularExpression("^(Pending|Approved|Ordered|Received|Cancelled)$",
+        ErrorMessage = "Status must be one of: Pending, Approved, Ordered, Received, Cancelled.")]
     public string Status { get; set; } = string.Empty;
 }
 
 public class PurchaseOrderViewModel
 {
     public int POID { get; set; }
+    public int? SupplierRefID { get; set; }
     public string SupplierID { get; set; } = string.Empty;
     public string SupplierName { get; set; } = string.Empty;
     public DateTime OrderDate { get; set; }
@@ -72,16 +80,19 @@ public class PurchaseOrderViewModel
     public decimal TotalAmount { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedDate { get; set; }
+    public DateTime? ModifiedDate { get; set; }
     public List<PurchaseOrderItemViewModel> Items { get; set; } = new();
 }
 
 public class PurchaseOrderItemViewModel
 {
-    public int ItemID { get; set; }
+    public int POItemID { get; set; }
+    public int InventoryID { get; set; }
     public int ProductID { get; set; }
     public string ProductName { get; set; } = string.Empty;
     public decimal Quantity { get; set; }
     public decimal UnitPrice { get; set; }
-    public decimal LineTotal => Quantity * UnitPrice;
+    public decimal TotalPrice { get; set; }
+    public decimal ReceivedQty { get; set; }
     public DateTime CreatedDate { get; set; }
 }

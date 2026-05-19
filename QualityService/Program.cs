@@ -61,6 +61,14 @@ builder.Services.AddAuthorization();
 builder.Services.AddCors(o => o.AddPolicy("AllowAll",
     p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient("ComplianceService", client =>
+    client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:ComplianceService"]!));
+builder.Services.AddHttpClient("NotificationService", client =>
+    client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:NotificationService"]!));
+builder.Services.AddHttpClient("WorkOrderService", client =>
+    client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:WorkOrderService"]!));
+
 builder.Services.AddScoped<IInspectionRepository, InspectionRepository>();
 builder.Services.AddScoped<IDefectRepository, DefectRepository>();
 builder.Services.AddScoped<IInspectionService, InspectionServiceImpl>();

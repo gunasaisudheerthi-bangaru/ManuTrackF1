@@ -22,9 +22,9 @@ public class CreateDefectRequest
 public class ResolveDefectRequest
 {
     [Required(ErrorMessage = "Resolution description is required.")]
-    [MinLength(10, ErrorMessage = "Resolution must be at least 10 characters.")]
-    [MaxLength(1000, ErrorMessage = "Resolution cannot exceed 1000 characters.")]
-    public string Resolution { get; set; } = string.Empty;
+    [MinLength(10, ErrorMessage = "Resolution description must be at least 10 characters.")]
+    [MaxLength(1000, ErrorMessage = "Resolution description cannot exceed 1000 characters.")]
+    public string ResolutionDescription { get; set; } = string.Empty;
 }
 
 public class UpdateDefectStatusRequest
@@ -42,7 +42,7 @@ public class DefectViewModel
     public string Description { get; set; } = string.Empty;
     public string Severity { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
-    public string? Resolution { get; set; }
+    public string? ResolutionDescription { get; set; }
     public DateTime CreatedDate { get; set; }
     public DateTime? UpdatedDate { get; set; }
     public DateTime? ResolvedDate { get; set; }

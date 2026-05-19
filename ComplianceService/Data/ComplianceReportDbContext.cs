@@ -16,6 +16,7 @@ public class ComplianceReportDbContext(DbContextOptions<ComplianceReportDbContex
             e.Property(r => r.Title).IsRequired().HasMaxLength(200);
             e.Property(r => r.Scope).IsRequired().HasMaxLength(500);
             e.Property(r => r.Metrics).IsRequired().HasColumnType("nvarchar(max)");
+            e.Property(r => r.GeneratedByUserID).IsRequired().HasDefaultValue(0);
             e.Property(r => r.GeneratedBy).IsRequired().HasMaxLength(200);
             e.Property(r => r.Status).IsRequired().HasMaxLength(50).HasDefaultValue("Draft");
             e.Property(r => r.ReportType).IsRequired().HasMaxLength(100);

@@ -13,11 +13,8 @@ public class InventoryController(IInventoryService service) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<ApiResponse<IEnumerable<InventoryItemViewModel>>>> GetAll(
-        [FromQuery] string? status, [FromQuery] string? locationId)
-    {
-        var result = await service.GetAllAsync(status, locationId);
-        return Ok(result);
-    }
+        [FromQuery] string? status, [FromQuery] int? locationId)
+        => Ok(await service.GetAllAsync(status, locationId));
 
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ApiResponse<InventoryItemViewModel>>> GetById(int id)
@@ -26,6 +23,10 @@ public class InventoryController(IInventoryService service) : ControllerBase
     [HttpGet("low-stock")]
     public async Task<ActionResult<ApiResponse<IEnumerable<InventoryItemViewModel>>>> GetLowStock()
         => Ok(await service.GetLowStockAsync());
+
+    [HttpGet("{id:int}/movements")]
+    public async Task<ActionResult<ApiResponse<IEnumerable<StockMovementViewModel>>>> GetMovements(int id)
+        => Ok(await service.GetMovementsAsync(id));
 
     [HttpPost]
     [Authorize(Roles = "Admin,InventoryManager")]

@@ -7,6 +7,7 @@ public class ComplianceReport
     public string Scope { get; set; } = string.Empty;
     public string Metrics { get; set; } = "{}";
     public DateTime GeneratedDate { get; set; } = DateTime.UtcNow;
+    public int GeneratedByUserID { get; set; }
     public string GeneratedBy { get; set; } = string.Empty;
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedDate { get; set; }

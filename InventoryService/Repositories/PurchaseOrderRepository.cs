@@ -9,13 +9,13 @@ public class PurchaseOrderRepository(InventoryDbContext db) : IPurchaseOrderRepo
 {
     public async Task<IEnumerable<PurchaseOrder>> GetAllAsync(string? status = null)
     {
-        var query = db.PurchaseOrders.Include(p => p.Items).AsQueryable();
+        var query = db.PurchaseOrders.Include(p => p.Items).Include(p => p.Supplier).AsQueryable();
         if (!string.IsNullOrWhiteSpace(status)) query = query.Where(p => p.Status == status);
         return await query.OrderByDescending(p => p.OrderDate).ToListAsync();
     }
 
     public async Task<PurchaseOrder?> GetByIdAsync(int id) =>
-        await db.PurchaseOrders.Include(p => p.Items).FirstOrDefaultAsync(p => p.POID == id);
+        await db.PurchaseOrders.Include(p => p.Items).Include(p => p.Supplier).FirstOrDefaultAsync(p => p.POID == id);
 
     public async Task<PurchaseOrder> CreateAsync(PurchaseOrder po)
     {

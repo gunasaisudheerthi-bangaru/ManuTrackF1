@@ -23,6 +23,9 @@ public class CreateWorkOrderRequest : IValidatableObject
     [Required(ErrorMessage = "End date is required.")]
     public DateTime EndDate { get; set; }
 
+    public DateTime? EstimatedStartDate { get; set; }
+    public DateTime? EstimatedEndDate { get; set; }
+
     [MinLength(2, ErrorMessage = "AssignedTo must be at least 2 characters.")]
     [MaxLength(200, ErrorMessage = "AssignedTo cannot exceed 200 characters.")]
     public string? AssignedTo { get; set; }
@@ -52,6 +55,8 @@ public class UpdateWorkOrderRequest
 
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
+    public DateTime? EstimatedStartDate { get; set; }
+    public DateTime? EstimatedEndDate { get; set; }
 
     [MinLength(2, ErrorMessage = "AssignedTo must be at least 2 characters.")]
     [MaxLength(200, ErrorMessage = "AssignedTo cannot exceed 200 characters.")]
@@ -82,6 +87,10 @@ public class WorkOrderViewModel
     public int Quantity { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
+    public DateTime? EstimatedStartDate { get; set; }
+    public DateTime? EstimatedEndDate { get; set; }
+    public DateTime? ActualStartDate { get; set; }
+    public DateTime? ActualEndDate { get; set; }
     public string Status { get; set; } = string.Empty;
     public string? AssignedTo { get; set; }
     public int? AssignedOperatorID { get; set; }
@@ -90,4 +99,6 @@ public class WorkOrderViewModel
     public DateTime CreatedDate { get; set; }
     public DateTime? ModifiedDate { get; set; }
     public int TaskCount { get; set; }
+    public decimal ProgressPercentage { get; set; }
+    public bool IsOverdue { get; set; }
 }

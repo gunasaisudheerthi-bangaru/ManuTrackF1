@@ -44,6 +44,11 @@ namespace ComplianceService.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int>("GeneratedByUserID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<DateTime>("GeneratedDate")
                         .HasColumnType("datetime2");
 
@@ -94,4 +99,3 @@ namespace ComplianceService.Migrations
         }
     }
 }
-

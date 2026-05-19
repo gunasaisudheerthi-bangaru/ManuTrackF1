@@ -1,7 +1,5 @@
-﻿using ComplianceService.DTOs;
 using ComplianceService.DTOs;
 using ComplianceService.Services.Interfaces;
-using ManuTrack.SharedKernel.Helpers;
 using ManuTrack.SharedKernel.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,24 +24,22 @@ public class ComplianceReportController(IComplianceReportService service) : Cont
 
     [HttpPost]
     [Authorize(Roles = "Admin,ComplianceOfficer")]
-    public async Task<ActionResult<ApiResponse<ComplianceReportViewModel>>> Create([FromBody] CreateComplianceReportRequest request)
+    public async Task<ActionResult<ApiResponse<ComplianceReportViewModel>>> Create(
+        [FromBody] CreateComplianceReportRequest request)
     {
-        var generatedBy = JwtHelper.GetName(User) ?? JwtHelper.GetUserId(User).ToString();
-        var result = await service.CreateAsync(request, generatedBy);
+        // generatedBy is now extracted from JWT inside the service
+        var result = await service.CreateAsync(request);
         return CreatedAtAction(nameof(GetById), new { id = result.Data!.ReportID }, result);
     }
 
     [HttpPut("{id:int}/status")]
     [Authorize(Roles = "Admin,ComplianceOfficer")]
-    public async Task<ActionResult<ApiResponse<ComplianceReportViewModel>>> UpdateStatus(int id, [FromBody] UpdateReportStatusRequest request)
+    public async Task<ActionResult<ApiResponse<ComplianceReportViewModel>>> UpdateStatus(
+        int id, [FromBody] UpdateReportStatusRequest request)
         => Ok(await service.UpdateStatusAsync(id, request));
 
     [HttpPut("{id:int}/approve")]
     [Authorize(Roles = "Admin,ComplianceOfficer")]
     public async Task<IActionResult> Approve(int id, [FromBody] ApproveReportRequest request)
-    {
-        var result = await service.ApproveReportAsync(id, request);
-        return Ok(result);
-    }
+        => Ok(await service.ApproveReportAsync(id, request));
 }
-

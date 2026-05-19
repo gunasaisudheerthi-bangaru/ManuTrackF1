@@ -1,4 +1,3 @@
-﻿using ComplianceService.DTOs;
 using ComplianceService.DTOs;
 using ComplianceService.Services.Interfaces;
 using ManuTrack.SharedKernel.Responses;
@@ -12,14 +11,18 @@ namespace ComplianceService.Controllers;
 [Authorize]
 public class AuditController(IAuditService service) : ControllerBase
 {
+    // Change 5: extended query filters (entityType, action, entityId)
     [HttpGet]
     [Authorize(Roles = "Admin,ComplianceOfficer")]
     public async Task<ActionResult<ApiResponse<IEnumerable<AuditEntryViewModel>>>> GetAll(
         [FromQuery] string? userId,
         [FromQuery] string? serviceName,
         [FromQuery] DateTime? from,
-        [FromQuery] DateTime? to)
-        => Ok(await service.GetAllAsync(userId, serviceName, from, to));
+        [FromQuery] DateTime? to,
+        [FromQuery] string? entityType,
+        [FromQuery] string? action,
+        [FromQuery] string? entityId)
+        => Ok(await service.GetAllAsync(userId, serviceName, from, to, entityType, action, entityId));
 
     [HttpGet("{id:int}")]
     [Authorize(Roles = "Admin,ComplianceOfficer")]
@@ -27,10 +30,39 @@ public class AuditController(IAuditService service) : ControllerBase
         => Ok(await service.GetByIdAsync(id));
 
     [HttpPost]
-    public async Task<ActionResult<ApiResponse<AuditEntryViewModel>>> Log([FromBody] LogAuditEntryRequest request)
+    public async Task<ActionResult<ApiResponse<AuditEntryViewModel>>> Log(
+        [FromBody] LogAuditEntryRequest request)
     {
         var result = await service.LogAsync(request);
         return CreatedAtAction(nameof(GetById), new { id = result.Data!.AuditID }, result);
     }
-}
 
+    // Change 1: Audit logs are immutable — explicitly return 405 for mutating methods
+
+    [HttpPut("{id:int}")]
+    [HttpPut]
+    public IActionResult PutNotAllowed()
+    {
+        Response.Headers["Allow"] = "GET, POST";
+        return StatusCode(405, ApiResponse.Fail(
+            "Method Not Allowed. Audit logs are immutable and cannot be modified."));
+    }
+
+    [HttpDelete("{id:int}")]
+    [HttpDelete]
+    public IActionResult DeleteNotAllowed()
+    {
+        Response.Headers["Allow"] = "GET, POST";
+        return StatusCode(405, ApiResponse.Fail(
+            "Method Not Allowed. Audit logs are immutable and cannot be deleted."));
+    }
+
+    [HttpPatch("{id:int}")]
+    [HttpPatch]
+    public IActionResult PatchNotAllowed()
+    {
+        Response.Headers["Allow"] = "GET, POST";
+        return StatusCode(405, ApiResponse.Fail(
+            "Method Not Allowed. Audit logs are immutable and cannot be modified."));
+    }
+}

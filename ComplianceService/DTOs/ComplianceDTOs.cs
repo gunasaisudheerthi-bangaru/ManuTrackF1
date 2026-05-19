@@ -91,6 +91,7 @@ public class ComplianceReportViewModel
     public string Scope { get; set; } = string.Empty;
     public string Metrics { get; set; } = string.Empty;
     public DateTime GeneratedDate { get; set; }
+    public int GeneratedByUserID { get; set; }
     public string GeneratedBy { get; set; } = string.Empty;
     public DateTime CreatedDate { get; set; }
     public DateTime? UpdatedDate { get; set; }

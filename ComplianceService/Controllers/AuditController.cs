@@ -37,33 +37,4 @@ public class AuditController(IAuditService service) : ControllerBase
         var result = await service.LogAsync(request);
         return CreatedAtAction(nameof(GetById), new { id = result.Data!.AuditID }, result);
     }
-
-    // Change 1: Audit logs are immutable — explicitly return 405 for mutating methods
-
-    [HttpPut("{id:int}")]
-    [HttpPut]
-    public IActionResult PutNotAllowed()
-    {
-        Response.Headers["Allow"] = "GET, POST";
-        return StatusCode(405, ApiResponse.Fail(
-            "Method Not Allowed. Audit logs are immutable and cannot be modified."));
-    }
-
-    [HttpDelete("{id:int}")]
-    [HttpDelete]
-    public IActionResult DeleteNotAllowed()
-    {
-        Response.Headers["Allow"] = "GET, POST";
-        return StatusCode(405, ApiResponse.Fail(
-            "Method Not Allowed. Audit logs are immutable and cannot be deleted."));
-    }
-
-    [HttpPatch("{id:int}")]
-    [HttpPatch]
-    public IActionResult PatchNotAllowed()
-    {
-        Response.Headers["Allow"] = "GET, POST";
-        return StatusCode(405, ApiResponse.Fail(
-            "Method Not Allowed. Audit logs are immutable and cannot be modified."));
-    }
 }

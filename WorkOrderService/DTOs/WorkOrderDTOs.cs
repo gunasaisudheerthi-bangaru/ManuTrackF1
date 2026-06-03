@@ -9,8 +9,7 @@ public class CreateWorkOrderRequest : IValidatableObject
     public int ProductID { get; set; }
 
     [Required(ErrorMessage = "Product name is required.")]
-    [MinLength(2, ErrorMessage = "Product name must be at least 2 characters.")]
-    [MaxLength(200, ErrorMessage = "Product name cannot exceed 200 characters.")]
+    [MaxLength(200)]
     public string ProductName { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Quantity is required.")]
@@ -23,53 +22,15 @@ public class CreateWorkOrderRequest : IValidatableObject
     [Required(ErrorMessage = "End date is required.")]
     public DateTime EndDate { get; set; }
 
-    public DateTime? EstimatedStartDate { get; set; }
-    public DateTime? EstimatedEndDate { get; set; }
-
-    [MinLength(2, ErrorMessage = "AssignedTo must be at least 2 characters.")]
-    [MaxLength(200, ErrorMessage = "AssignedTo cannot exceed 200 characters.")]
-    public string? AssignedTo { get; set; }
-
-    public int? AssignedOperatorID { get; set; }
-
-    [MaxLength(200, ErrorMessage = "CreatedBy cannot exceed 200 characters.")]
-    public string? CreatedBy { get; set; }
-
-    [MaxLength(1000, ErrorMessage = "Notes cannot exceed 1000 characters.")]
-    public string? Notes { get; set; }
-
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (EndDate <= StartDate)
             yield return new ValidationResult("End date must be after start date.", [nameof(EndDate)]);
-
-        if (StartDate < DateTime.UtcNow.Date)
-            yield return new ValidationResult("Start date cannot be in the past.", [nameof(StartDate)]);
     }
 }
 
-public class UpdateWorkOrderRequest
-{
-    [Range(1, 1000000, ErrorMessage = "Quantity must be between 1 and 1,000,000.")]
-    public int? Quantity { get; set; }
-
-    public DateTime? StartDate { get; set; }
-    public DateTime? EndDate { get; set; }
-    public DateTime? EstimatedStartDate { get; set; }
-    public DateTime? EstimatedEndDate { get; set; }
-
-    [MinLength(2, ErrorMessage = "AssignedTo must be at least 2 characters.")]
-    [MaxLength(200, ErrorMessage = "AssignedTo cannot exceed 200 characters.")]
-    public string? AssignedTo { get; set; }
-
-    public int? AssignedOperatorID { get; set; }
-
-    [MaxLength(200, ErrorMessage = "CreatedBy cannot exceed 200 characters.")]
-    public string? CreatedBy { get; set; }
-
-    [MaxLength(1000, ErrorMessage = "Notes cannot exceed 1000 characters.")]
-    public string? Notes { get; set; }
-}
+// Kept for backward compatibility — no fields needed since we only update status
+public class UpdateWorkOrderRequest { }
 
 public class UpdateWorkOrderStatusRequest
 {
@@ -87,18 +48,7 @@ public class WorkOrderViewModel
     public int Quantity { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
-    public DateTime? EstimatedStartDate { get; set; }
-    public DateTime? EstimatedEndDate { get; set; }
-    public DateTime? ActualStartDate { get; set; }
-    public DateTime? ActualEndDate { get; set; }
     public string Status { get; set; } = string.Empty;
-    public string? AssignedTo { get; set; }
-    public int? AssignedOperatorID { get; set; }
-    public string? CreatedBy { get; set; }
-    public string? Notes { get; set; }
-    public DateTime CreatedDate { get; set; }
-    public DateTime? ModifiedDate { get; set; }
+    public bool IsOverdue => Status != "Completed" && Status != "Cancelled" && EndDate < DateTime.UtcNow;
     public int TaskCount { get; set; }
-    public decimal ProgressPercentage { get; set; }
-    public bool IsOverdue { get; set; }
 }

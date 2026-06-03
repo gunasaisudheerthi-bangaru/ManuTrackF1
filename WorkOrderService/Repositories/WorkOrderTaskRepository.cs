@@ -9,7 +9,7 @@ public class WorkOrderTaskRepository(WorkOrderDbContext db) : IWorkOrderTaskRepo
 {
     public async Task<IEnumerable<WorkOrderTask>> GetByWorkOrderIdAsync(int workOrderId) =>
         await db.WorkOrderTasks.Where(t => t.WorkOrderID == workOrderId)
-                               .OrderBy(t => t.CreatedDate)
+                               .OrderBy(t => t.TaskID)
                                .ToListAsync();
 
     public async Task<WorkOrderTask?> GetByIdAsync(int id) =>

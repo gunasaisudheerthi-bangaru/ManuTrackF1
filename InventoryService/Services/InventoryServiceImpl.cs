@@ -5,7 +5,6 @@ using InventoryService.Enums;
 using InventoryService.Models;
 using InventoryService.Repositories.Interfaces;
 using InventoryService.Services.Interfaces;
-using ManuTrack.SharedKernel.Exceptions;
 using ManuTrack.SharedKernel.Helpers;
 using ManuTrack.SharedKernel.Responses;
 
@@ -94,7 +93,7 @@ public class InventoryServiceImpl(
                 Reason = reason,
                 ReferenceID = referenceId,
                 PerformedBy = userId,
-                CreatedDate = DateTime.UtcNow
+    
             });
         }
         catch (Exception ex) { logger.LogWarning(ex, "Stock movement record failed for inventory item {InventoryId}.", inventoryId); }
@@ -110,8 +109,9 @@ public class InventoryServiceImpl(
 
     public async Task<ApiResponse<InventoryItemViewModel>> GetByIdAsync(int id)
     {
-        var item = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Inventory item {id} not found.");
+        var item = await repo.GetByIdAsync(id);
+        if (item == null)
+            return ApiResponse<InventoryItemViewModel>.Fail($"Inventory item {id} not found.");
         return ApiResponse<InventoryItemViewModel>.Ok(Map(item));
     }
 
@@ -124,7 +124,7 @@ public class InventoryServiceImpl(
     public async Task<ApiResponse<IEnumerable<StockMovementViewModel>>> GetMovementsAsync(int inventoryId)
     {
         if (!await repo.ExistsAsync(inventoryId))
-            throw new NotFoundException($"Inventory item {inventoryId} not found.");
+            return ApiResponse<IEnumerable<StockMovementViewModel>>.Fail($"Inventory item {inventoryId} not found.");
 
         var movements = await movementRepo.GetByInventoryIdAsync(inventoryId);
         return ApiResponse<IEnumerable<StockMovementViewModel>>.Ok(movements.Select(MapMovement));
@@ -135,21 +135,24 @@ public class InventoryServiceImpl(
         // Validate LocationID if provided
         if (request.LocationID.HasValue)
         {
-            var location = await locationRepo.GetByIdAsync(request.LocationID.Value)
-                ?? throw new NotFoundException($"Location {request.LocationID.Value} not found.");
+            var location = await locationRepo.GetByIdAsync(request.LocationID.Value);
+            if (location == null)
+                return ApiResponse<InventoryItemViewModel>.Fail($"Location {request.LocationID.Value} not found.");
             if (!location.IsActive)
-                throw new ValidationException($"Location '{location.Name}' is inactive and cannot be assigned to an inventory item.");
+                return ApiResponse<InventoryItemViewModel>.Fail($"Location '{location.Name}' is inactive and cannot be assigned to an inventory item.");
         }
 
         var item = new InventoryItem
         {
-            ProductID = request.ProductID,
+            ItemType = request.ItemType,
+            ProductID = request.ItemType == "Product" ? request.ProductID : null,
+            ComponentID = request.ItemType == "RawMaterial" ? request.ComponentID : null,
             ProductName = request.ProductName,
             LocationID = request.LocationID,
             QuantityOnHand = request.QuantityOnHand,
             MinimumQuantity = request.MinimumQuantity,
             Notes = request.Notes,
-            CreatedDate = DateTime.UtcNow
+
         };
 
         await RecalculateStatusAsync(item);
@@ -165,21 +168,22 @@ public class InventoryServiceImpl(
 
     public async Task<ApiResponse<InventoryItemViewModel>> UpdateAsync(int id, UpdateInventoryItemRequest request)
     {
-        var item = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Inventory item {id} not found.");
+        var item = await repo.GetByIdAsync(id);
+        if (item == null)
+            return ApiResponse<InventoryItemViewModel>.Fail($"Inventory item {id} not found.");
 
         if (request.LocationID.HasValue)
         {
-            var location = await locationRepo.GetByIdAsync(request.LocationID.Value)
-                ?? throw new NotFoundException($"Location {request.LocationID.Value} not found.");
+            var location = await locationRepo.GetByIdAsync(request.LocationID.Value);
+            if (location == null)
+                return ApiResponse<InventoryItemViewModel>.Fail($"Location {request.LocationID.Value} not found.");
             if (!location.IsActive)
-                throw new ValidationException($"Location '{location.Name}' is inactive and cannot be assigned to an inventory item.");
+                return ApiResponse<InventoryItemViewModel>.Fail($"Location '{location.Name}' is inactive and cannot be assigned to an inventory item.");
             item.LocationID = request.LocationID.Value;
         }
         if (request.QuantityOnHand.HasValue) item.QuantityOnHand = request.QuantityOnHand.Value;
         if (request.MinimumQuantity.HasValue) item.MinimumQuantity = request.MinimumQuantity.Value;
         if (request.Notes != null) item.Notes = request.Notes;
-        item.ModifiedDate = DateTime.UtcNow;
 
         await RecalculateStatusAsync(item);
         var updated = await repo.UpdateAsync(item);
@@ -192,14 +196,14 @@ public class InventoryServiceImpl(
 
     public async Task<ApiResponse<InventoryItemViewModel>> AdjustQuantityAsync(int id, AdjustQuantityRequest request)
     {
-        var item = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Inventory item {id} not found.");
+        var item = await repo.GetByIdAsync(id);
+        if (item == null)
+            return ApiResponse<InventoryItemViewModel>.Fail($"Inventory item {id} not found.");
 
         item.QuantityOnHand += request.Adjustment;
         if (item.QuantityOnHand < 0)
-            throw new ValidationException("Adjustment would result in negative stock.");
+            return ApiResponse<InventoryItemViewModel>.Fail("Adjustment would result in negative stock.");
 
-        item.ModifiedDate = DateTime.UtcNow;
         await RecalculateStatusAsync(item);
         var updated = await repo.UpdateAsync(item);
 
@@ -213,11 +217,12 @@ public class InventoryServiceImpl(
 
     public async Task<ApiResponse> DeleteAsync(int id)
     {
-        var item = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Inventory item {id} not found.");
+        var item = await repo.GetByIdAsync(id);
+        if (item == null)
+            return ApiResponse.Fail($"Inventory item {id} not found.");
 
         if (await movementRepo.HasMovementsAsync(id))
-            throw new ConflictException($"Cannot delete '{item.ProductName}' because it has stock movement history. Deactivate it instead.");
+            return ApiResponse.Fail($"Cannot delete '{item.ProductName}' because it has stock movement history. Deactivate it instead.");
 
         await repo.DeleteAsync(item);
         await LogAuditAsync("Deleted Inventory Item", "InventoryItem", id.ToString(),
@@ -231,7 +236,9 @@ public class InventoryServiceImpl(
     private static InventoryItemViewModel Map(InventoryItem i) => new()
     {
         InventoryID     = i.InventoryID,
+        ItemType        = i.ItemType,
         ProductID       = i.ProductID,
+        ComponentID     = i.ComponentID,
         ProductName     = i.ProductName,
         LocationID      = i.LocationID,
         LocationName    = i.Location?.Name,
@@ -239,8 +246,6 @@ public class InventoryServiceImpl(
         MinimumQuantity = i.MinimumQuantity,
         Status          = i.Status,
         Notes           = i.Notes,
-        CreatedDate     = i.CreatedDate,
-        ModifiedDate    = i.ModifiedDate
     };
 
     private static StockMovementViewModel MapMovement(StockMovement m) => new()

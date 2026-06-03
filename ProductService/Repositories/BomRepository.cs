@@ -48,4 +48,17 @@ public class BomRepository(ProductDbContext db) : IBomRepository
 
     public async Task<bool> ExistsAsync(int id) =>
         await db.Boms.AnyAsync(b => b.BOMID == id);
+
+    public async Task<int> CountForProductAsync(int productId) =>
+        await db.Boms.CountAsync(b => b.ProductID == productId);
+
+    public async Task DeleteAllForProductAsync(int productId)
+    {
+        var boms = await db.Boms.Where(b => b.ProductID == productId).ToListAsync();
+        db.Boms.RemoveRange(boms);
+        await db.SaveChangesAsync();
+    }
+
+    public async Task<bool> HasBomsForComponentAsync(int componentId) =>
+        await db.Boms.AnyAsync(b => b.ComponentID == componentId);
 }

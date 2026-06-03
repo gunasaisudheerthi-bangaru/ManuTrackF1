@@ -5,7 +5,6 @@ using ComplianceService.Enums;
 using ComplianceService.Models;
 using ComplianceService.Repositories.Interfaces;
 using ComplianceService.Services.Interfaces;
-using ManuTrack.SharedKernel.Exceptions;
 using ManuTrack.SharedKernel.Helpers;
 using ManuTrack.SharedKernel.Responses;
 using Microsoft.AspNetCore.Http;
@@ -89,8 +88,9 @@ public class ComplianceReportServiceImpl(
 
     public async Task<ApiResponse<ComplianceReportViewModel>> GetByIdAsync(int id)
     {
-        var report = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Compliance report {id} not found.");
+        var report = await repo.GetByIdAsync(id);
+        if (report == null)
+            return ApiResponse<ComplianceReportViewModel>.Fail($"Compliance report {id} not found.");
         return ApiResponse<ComplianceReportViewModel>.Ok(Map(report));
     }
 
@@ -133,12 +133,13 @@ public class ComplianceReportServiceImpl(
     public async Task<ApiResponse<ComplianceReportViewModel>> UpdateStatusAsync(
         int id, UpdateReportStatusRequest request)
     {
-        var report = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Compliance report {id} not found.");
+        var report = await repo.GetByIdAsync(id);
+        if (report == null)
+            return ApiResponse<ComplianceReportViewModel>.Fail($"Compliance report {id} not found.");
 
         // Change 2: lock Approved reports
         if (report.Status == ComplianceReportStatus.Approved)
-            throw new ValidationException(
+            return ApiResponse<ComplianceReportViewModel>.Fail(
                 "Approved reports cannot be modified. " +
                 "Approved compliance reports are locked and immutable.");
 
@@ -160,12 +161,13 @@ public class ComplianceReportServiceImpl(
     public async Task<ApiResponse<ComplianceReportViewModel>> ApproveReportAsync(
         int id, ApproveReportRequest request)
     {
-        var report = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Compliance report {id} not found.");
+        var report = await repo.GetByIdAsync(id);
+        if (report == null)
+            return ApiResponse<ComplianceReportViewModel>.Fail($"Compliance report {id} not found.");
 
         // Change 2: must be InReview before approving
         if (report.Status != ComplianceReportStatus.InReview)
-            throw new ValidationException(
+            return ApiResponse<ComplianceReportViewModel>.Fail(
                 $"Report must be in InReview status before it can be approved. " +
                 $"Current status: {report.Status}.");
 
@@ -176,7 +178,7 @@ public class ComplianceReportServiceImpl(
                 report.PeriodStart.Value, report.PeriodEnd.Value);
 
             if (!periodEntries.Any())
-                throw new ValidationException(
+                return ApiResponse<ComplianceReportViewModel>.Fail(
                     $"Cannot approve this report. No audit log entries found between " +
                     $"{report.PeriodStart.Value:yyyy-MM-dd} and {report.PeriodEnd.Value:yyyy-MM-dd}. " +
                     "Please verify audit logging is working correctly.");

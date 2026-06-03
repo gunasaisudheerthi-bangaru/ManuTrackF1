@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Http;
 using ProductService.Enums;
-using ManuTrack.SharedKernel.Exceptions;
 using ManuTrack.SharedKernel.Helpers;
 using ManuTrack.SharedKernel.Responses;
 using ProductService.DTOs;
@@ -13,6 +12,7 @@ namespace ProductService.Services;
 
 public class ProductServiceImpl(
     IProductRepository repo,
+    IBomRepository bomRepo,
     IHttpClientFactory httpClientFactory,
     IHttpContextAccessor httpContextAccessor,
     ILogger<ProductServiceImpl> logger) : IProductService
@@ -50,8 +50,9 @@ public class ProductServiceImpl(
 
     public async Task<ApiResponse<ProductViewModel>> GetProductByIdAsync(int id)
     {
-        var product = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Product {id} not found.");
+        var product = await repo.GetByIdAsync(id);
+        if (product == null)
+            return ApiResponse<ProductViewModel>.Fail($"Product {id} not found.");
         return ApiResponse<ProductViewModel>.Ok(Map(product));
     }
 
@@ -59,7 +60,7 @@ public class ProductServiceImpl(
     {
         var existing = await repo.GetByNameAsync(request.Name);
         if (existing != null)
-            throw new ConflictException($"Product with name '{request.Name}' already exists.");
+            return ApiResponse<ProductViewModel>.Fail($"Product with name '{request.Name}' already exists.");
 
         var product = new Product
         {
@@ -68,7 +69,7 @@ public class ProductServiceImpl(
             Version = request.Version,
             Description = request.Description,
             Status = ProductStatus.Draft,
-            CreatedDate = DateTime.UtcNow
+            
         };
 
         var created = await repo.CreateAsync(product);
@@ -82,14 +83,14 @@ public class ProductServiceImpl(
 
     public async Task<ApiResponse<ProductViewModel>> UpdateProductAsync(int id, UpdateProductRequest request)
     {
-        var product = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Product {id} not found.");
+        var product = await repo.GetByIdAsync(id);
+        if (product == null)
+            return ApiResponse<ProductViewModel>.Fail($"Product {id} not found.");
 
         if (request.Name != null) product.Name = request.Name;
         if (request.Category != null) product.Category = request.Category;
         if (request.Version != null) product.Version = request.Version;
         if (request.Description != null) product.Description = request.Description;
-        product.ModifiedDate = DateTime.UtcNow;
 
         var updated = await repo.UpdateAsync(product);
 
@@ -102,11 +103,11 @@ public class ProductServiceImpl(
 
     public async Task<ApiResponse<ProductViewModel>> UpdateProductStatusAsync(int id, UpdateProductStatusRequest request)
     {
-        var product = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Product {id} not found.");
+        var product = await repo.GetByIdAsync(id);
+        if (product == null)
+            return ApiResponse<ProductViewModel>.Fail($"Product {id} not found.");
 
         product.Status = request.Status;
-        product.ModifiedDate = DateTime.UtcNow;
 
         var updated = await repo.UpdateAsync(product);
 
@@ -119,8 +120,12 @@ public class ProductServiceImpl(
 
     public async Task<ApiResponse> DeleteProductAsync(int id)
     {
-        var product = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Product {id} not found.");
+        var product = await repo.GetByIdAsync(id);
+        if (product == null)
+            return ApiResponse.Fail($"Product {id} not found.");
+
+        // Delete associated BOM entries first to avoid FK constraint violation
+        await bomRepo.DeleteAllForProductAsync(id);
 
         await repo.DeleteAsync(product);
 
@@ -141,7 +146,6 @@ public class ProductServiceImpl(
         Version = p.Version,
         Status = p.Status,
         Description = p.Description,
-        CreatedDate = p.CreatedDate,
-        ModifiedDate = p.ModifiedDate
+        
     };
 }

@@ -131,8 +131,6 @@ public class NotificationServiceImpl(
         var n = await repo.GetByIdAsync(id)
             ?? throw new NotFoundException($"Notification {id} not found.");
         n.Status = NotificationStatus.Read;
-        n.ReadDate = DateTime.UtcNow;
-        n.UpdatedDate = DateTime.UtcNow;
         var updated = await repo.UpdateAsync(n);
         return ApiResponse<NotificationViewModel>.Ok(Map(updated), "Notification marked as read.");
     }
@@ -143,8 +141,6 @@ public class NotificationServiceImpl(
         foreach (var n in items)
         {
             n.Status = NotificationStatus.Read;
-            n.ReadDate = DateTime.UtcNow;
-            n.UpdatedDate = DateTime.UtcNow;
             await repo.UpdateAsync(n);
         }
         return ApiResponse.Ok("All notifications marked as read.");
@@ -202,8 +198,5 @@ public class NotificationServiceImpl(
         Status         = n.Status,
         Priority       = n.Priority,
         ExpiryDate     = n.ExpiryDate,
-        CreatedDate    = n.CreatedDate,
-        UpdatedDate    = n.UpdatedDate,
-        ReadDate       = n.ReadDate
     };
 }

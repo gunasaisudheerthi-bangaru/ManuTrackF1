@@ -1,0 +1,91 @@
+/* Operator dashboard — green accent */
+@import '../admin/admin.component.css';
+
+:host {
+  --accent: #059669;
+  --accent-hover: #047857;
+  --accent-light: #ecfdf5;
+  --accent-border: #a7f3d0;
+}
+
+.nav-badge {
+  background: var(--red); color: #fff;
+  font-size: 10px; font-weight: 700;
+  padding: 1px 5px; border-radius: 10px;
+  margin-left: 4px;
+}
+
+/* Read-only badge */
+.readonly-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 12px; border-radius: 20px;
+  background: var(--surface3); border: 1px solid var(--border);
+  font-size: 12px; color: var(--muted); font-weight: 500;
+}
+
+/* Operator task list */
+.op-task-list { padding: 8px 12px 12px 54px; display: flex; flex-direction: column; gap: 8px; }
+.op-task-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  transition: box-shadow 0.12s;
+}
+.op-task-item:hover { box-shadow: var(--shadow-sm); }
+.op-task-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent-light); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+  border: 1px solid var(--accent-border);
+}
+.op-task-body { flex: 1; min-width: 0; }
+.op-task-desc { font-weight: 600; font-size: 13px; color: var(--text); }
+.op-task-assignee { font-size: 11.5px; color: var(--muted); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
+.op-task-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.op-status-btn {
+  padding: 5px 14px; border-radius: 6px;
+  font-size: 12px; font-weight: 600;
+  cursor: pointer; border: none; font-family: var(--font);
+  transition: all 0.15s;
+}
+.op-status-btn.pending { background: var(--accent-light); color: var(--accent); border: 1px solid var(--accent-border); }
+.op-status-btn.pending:hover { background: var(--accent); color: #fff; }
+.op-status-btn.complete { background: var(--green-light); color: var(--green); border: 1px solid var(--green-border); }
+.op-status-btn.complete:hover { background: var(--green); color: #fff; }
+.op-done-badge { font-size: 12px; font-weight: 600; color: var(--green); }
+
+.op-hint {
+  font-size: 11.5px; color: var(--muted);
+  font-style: italic;
+}
+
+/* WO tasks header */
+.wo-tasks-header { padding: 10px 16px 10px 54px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+
+/* Notification rows */
+.notif-row { display: flex; align-items: flex-start; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--border); transition: background 0.12s; }
+.notif-row:last-child { border-bottom: none; }
+.notif-row:hover { background: var(--surface2); }
+.notif-unread { background: var(--amber-light) !important; border-left: 3px solid var(--amber); }
+.notif-icon { width: 36px; height: 36px; border-radius: 50%; background: var(--surface3); color: var(--muted); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.notif-icon.unread { background: var(--accent-light); color: var(--accent); }
+.notif-body { flex: 1; min-width: 0; }
+
+/* Stock alerts */
+.low-stock-alert { display: flex; align-items: center; gap: 10px; background: var(--red-light); border: 1px solid var(--red-border); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; color: var(--red); }
+
+/* Row states */
+.row-alert td { background: var(--red-light) !important; }
+.row-warn td { background: var(--amber-light) !important; }
+
+/* Other operator's task label */
+.op-other-badge {
+  font-size: 11px; color: var(--muted2);
+  font-style: italic; padding: 3px 8px;
+  background: var(--surface3); border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }

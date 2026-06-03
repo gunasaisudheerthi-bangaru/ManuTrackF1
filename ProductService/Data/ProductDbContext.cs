@@ -7,9 +7,21 @@ public class ProductDbContext(DbContextOptions<ProductDbContext> options) : DbCo
 {
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Bom> Boms => Set<Bom>();
+    public DbSet<Component> Components => Set<Component>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Component>(e =>
+        {
+            e.HasKey(c => c.ComponentID);
+            e.Property(c => c.ComponentID).ValueGeneratedOnAdd();
+            e.Property(c => c.Name).IsRequired().HasMaxLength(200);
+            e.Property(c => c.MaterialType).IsRequired().HasMaxLength(100);
+            e.Property(c => c.Unit).IsRequired().HasMaxLength(50);
+            e.Property(c => c.Description).HasMaxLength(500);
+            e.HasIndex(c => c.Name);
+        });
+
         modelBuilder.Entity<Product>(e =>
         {
             e.HasKey(p => p.ProductID);

@@ -1,0 +1,827 @@
+<!-- INLINE PAGE NOTIFICATION -->
+<ng-container *ngIf="toastMsg || errorAlert">
+  <div class="page-notification" [class.notif-success]="!!toastMsg" [class.notif-error]="!!errorAlert">
+    <div class="notif-icon-wrap">
+      <svg *ngIf="toastMsg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+      <svg *ngIf="errorAlert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </div>
+    <span class="notif-text">{{ toastMsg || errorAlert }}</span>
+    <button class="notif-close" (click)="toastMsg=''; errorAlert=''">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+</ng-container>
+
+<!-- ── MODALS ──────────────────────────────────────────── -->
+
+<!-- Register Product -->
+<div class="modal-overlay" *ngIf="showProductModal" (click)="showProductModal=false">
+  <div class="modal" style="max-width:500px" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <div><div class="modal-title">Register Product</div><div class="modal-subtitle">Add a new product to the catalogue</div></div>
+      <button class="modal-close" (click)="showProductModal=false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <form [formGroup]="productForm" (ngSubmit)="createProduct()">
+      <div class="modal-body"><div class="form-grid">
+        <div class="form-field"><label>Product Name</label>
+          <input class="form-input" formControlName="name" placeholder="e.g. Steel Chair A">
+          <span class="field-err" *ngIf="pf['name'].invalid && pf['name'].touched">Name required.</span></div>
+        <div class="form-field"><label>Category</label>
+          <select class="form-input" formControlName="category">
+            <option value="">Select…</option>
+            <option *ngFor="let c of productCategories" [value]="c.value">{{ c.label }}</option>
+          </select>
+          <span class="field-err" *ngIf="pf['category'].invalid && pf['category'].touched">Category required.</span></div>
+        <div class="form-field"><label>Version</label>
+          <input class="form-input" formControlName="version" placeholder="e.g. 1.0">
+          <span class="field-err" *ngIf="pf['version'].invalid && pf['version'].touched">Format: 1.0</span></div>
+        <div class="form-field"><label>Status</label>
+          <div class="fixed-field" style="background:var(--amber-light);border-color:var(--amber-border)">
+            <span style="color:var(--amber);font-weight:600">Draft</span>
+            <span style="font-size:11px;color:var(--muted);margin-left:auto">Admin can publish</span>
+          </div></div>
+      </div></div>
+      <div class="modal-foot">
+        <button type="button" class="t-btn" (click)="showProductModal=false">Cancel</button>
+        <button type="submit" class="t-btn t-btn-primary" [disabled]="productLoading">{{ productLoading ? 'Saving…' : 'Register Product' }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add BOM -->
+<div class="modal-overlay" *ngIf="showBomModal" (click)="closeBomModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <div><div class="modal-title">Add BOM Entry</div><div class="modal-subtitle">Adding to: <strong>{{ getProductName(bf['productID'].value) }}</strong></div></div>
+      <button class="modal-close" (click)="closeBomModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="bom-success-banner" *ngIf="bomSuccessMsg">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:18px;height:18px;flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>
+      <div style="font-size:18px;font-weight:700;color:var(--green)">Added!</div>
+      <div style="font-size:13px;color:var(--text2)">{{ bomSuccessMsg }}</div>
+    </div>
+    <form [formGroup]="bomForm" (ngSubmit)="createBom()">
+      <div class="modal-body" *ngIf="!bomSuccessMsg">
+        <div class="form-grid">
+          <div class="form-field"><label>Parent Product</label>
+            <div class="fixed-field">
+              <span class="fixed-field-val">{{ getProductName(bf['productID'].value) }}</span>
+              <span class="badge b-active" style="font-size:10px">Active</span>
+            </div></div>
+          <div class="form-field"><label>Raw Material / Component</label>
+            <select class="form-input" formControlName="componentID">
+              <option value="">Select material…</option>
+              <option *ngFor="let c of activeComponents" [value]="c.componentID">{{ c.name }} ({{ c.unit }}) — {{ c.materialType }}</option>
+            </select>
+            <span class="field-err" *ngIf="bf['componentID'].invalid && bf['componentID'].touched">Required.</span>
+            <span style="font-size:11px;color:var(--muted);margin-top:3px;display:block">
+              Don't see your material? <a style="color:var(--accent);cursor:pointer" (click)="closeBomModal(); showComponentModal=true; componentForm.reset()">Register it first →</a>
+            </span></div>
+          <div class="form-field"><label>Quantity</label>
+            <input class="form-input" formControlName="quantity" type="number" min="0.0001" step="0.01" placeholder="e.g. 4">
+            <span class="field-err" *ngIf="bf['quantity'].invalid && bf['quantity'].touched">Required.</span></div>
+          <div class="form-field"><label>BOM Version</label>
+            <input class="form-input" formControlName="version" placeholder="e.g. 1.0"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="t-btn" (click)="closeBomModal()">{{ bomSuccessMsg ? 'Close' : 'Cancel' }}</button>
+        <button type="submit" class="t-btn t-btn-primary" *ngIf="!bomSuccessMsg" [disabled]="bomCreateLoading">{{ bomCreateLoading ? 'Adding…' : 'Add BOM Entry' }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Register Material -->
+<div class="modal-overlay" *ngIf="showComponentModal" (click)="showComponentModal=false">
+  <div class="modal" style="max-width:480px" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <div><div class="modal-title">Register Raw Material</div><div class="modal-subtitle">Registers the material and automatically adds it to Inventory with qty 0</div></div>
+      <button class="modal-close" (click)="showComponentModal=false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <form [formGroup]="componentForm" (ngSubmit)="createComponent()">
+      <div class="modal-body"><div class="form-grid">
+        <div class="form-field"><label>Material Name</label>
+          <input class="form-input" formControlName="name" placeholder="e.g. Steel Tube 25mm">
+          <span class="field-err" *ngIf="cf['name'].invalid && cf['name'].touched">Required.</span></div>
+        <div class="form-field"><label>Type</label>
+          <select class="form-input" formControlName="materialType">
+            <option value="">Select…</option>
+            <option *ngFor="let m of materialTypes" [value]="m.value">{{ m.label }}</option>
+          </select>
+          <span class="field-err" *ngIf="cf['materialType'].invalid && cf['materialType'].touched">Required.</span></div>
+        <div class="form-field"><label>Unit</label>
+          <select class="form-input" formControlName="unit">
+            <option value="">Select…</option>
+            <option *ngFor="let u of materialUnits" [value]="u.value">{{ u.label }}</option>
+          </select>
+          <span class="field-err" *ngIf="cf['unit'].invalid && cf['unit'].touched">Required.</span></div>
+        <div class="form-field"><label>Description <span style="color:var(--muted2);font-weight:400">(optional)</span></label>
+          <input class="form-input" formControlName="description" placeholder="e.g. 25mm diameter hollow tube"></div>
+      </div></div>
+      <div class="modal-foot">
+        <button type="button" class="t-btn" (click)="showComponentModal=false">Cancel</button>
+        <button type="submit" class="t-btn t-btn-primary" [disabled]="componentCreateLoading">{{ componentCreateLoading ? 'Saving…' : 'Register Material' }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Create Work Order -->
+<div class="modal-overlay" *ngIf="showWorkOrderModal" (click)="showWorkOrderModal=false">
+  <div class="modal" style="max-width:500px" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <div><div class="modal-title">Create Work Order</div><div class="modal-subtitle">Schedule a manufacturing work order</div></div>
+      <button class="modal-close" (click)="showWorkOrderModal=false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <form [formGroup]="workOrderForm" (ngSubmit)="createWorkOrder()">
+      <div class="modal-body"><div class="form-grid">
+        <div class="form-field" style="grid-column:1/-1"><label>Product</label>
+          <select class="form-input" formControlName="productID">
+            <option value="">Select product…</option>
+            <option *ngFor="let p of activeProductsList" [value]="p.productID">{{ p.name }} (v{{ p.version }})</option>
+          </select>
+          <span class="field-err" *ngIf="wf['productID'].invalid && wf['productID'].touched">Product required.</span></div>
+        <div class="form-field"><label>Quantity</label>
+          <input class="form-input" formControlName="quantity" type="number" min="1" placeholder="e.g. 100">
+          <span class="field-err" *ngIf="wf['quantity'].invalid && wf['quantity'].touched">Min 1.</span></div>
+        <div class="form-field"><label>Initial Status</label>
+          <div class="fixed-field" style="background:var(--amber-light);border-color:var(--amber-border)">
+            <span style="color:var(--amber);font-weight:600">Pending</span></div></div>
+        <div class="form-field"><label>Start Date</label>
+          <input class="form-input" formControlName="startDate" type="date">
+          <span class="field-err" *ngIf="wf['startDate'].invalid && wf['startDate'].touched">Required.</span></div>
+        <div class="form-field"><label>End Date</label>
+          <input class="form-input" formControlName="endDate" type="date">
+          <span class="field-err" *ngIf="wf['endDate'].invalid && wf['endDate'].touched">Required.</span></div>
+      </div></div>
+      <div class="modal-foot">
+        <button type="button" class="t-btn" (click)="showWorkOrderModal=false">Cancel</button>
+        <button type="submit" class="t-btn t-btn-primary" [disabled]="workOrderLoading">{{ workOrderLoading ? 'Creating…' : 'Create Work Order' }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add Task -->
+<div class="modal-overlay" *ngIf="showTaskModal" (click)="showTaskModal=false">
+  <div class="modal" style="max-width:440px" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <div><div class="modal-title">Add Task</div><div class="modal-subtitle">WO-{{ selectedWorkOrderForTask?.workOrderID }} · {{ selectedWorkOrderForTask?.productName }}</div></div>
+      <button class="modal-close" (click)="showTaskModal=false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <form [formGroup]="taskForm" (ngSubmit)="createTask()">
+      <div class="modal-body"><div class="form-grid" style="grid-template-columns:1fr">
+        <div class="form-field"><label>Description</label>
+          <input class="form-input" formControlName="description" placeholder="e.g. Cut steel tubes to size">
+          <span class="field-err" *ngIf="tf['description'].invalid && tf['description'].touched">Min 5 chars.</span></div>
+        <div class="form-field"><label>Assign To</label>
+          <input class="form-input" formControlName="assignedTo" placeholder="e.g. Arjun Kumar (Operator)">
+          <span class="field-err" *ngIf="tf['assignedTo'].invalid && tf['assignedTo'].touched">Required.</span></div>
+        <div class="form-field"><label>Notes <span style="color:var(--muted2);font-weight:400">(optional)</span></label>
+          <input class="form-input" formControlName="notes" placeholder="Any notes…"></div>
+      </div></div>
+      <div class="modal-foot">
+        <button type="button" class="t-btn" (click)="showTaskModal=false">Cancel</button>
+        <button type="submit" class="t-btn t-btn-primary" [disabled]="taskLoading">{{ taskLoading ? 'Adding…' : 'Add Task' }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Generate KPI Report -->
+<div class="modal-overlay" *ngIf="showKpiModal" (click)="showKpiModal=false">
+  <div class="modal" style="max-width:460px" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <div><div class="modal-title">Generate KPI Report</div><div class="modal-subtitle">Create a production performance report</div></div>
+      <button class="modal-close" (click)="showKpiModal=false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <form [formGroup]="kpiForm" (ngSubmit)="createKpiReport()">
+      <div class="modal-body"><div class="form-grid" style="grid-template-columns:1fr">
+        <div class="form-field"><label>Report Title</label>
+          <input class="form-input" formControlName="title" placeholder="e.g. Q2 Production Performance">
+          <span class="field-err" *ngIf="kf['title'].invalid && kf['title'].touched">Min 3 chars.</span></div>
+        <div class="form-field"><label>Report Type</label>
+          <select class="form-input" formControlName="reportType">
+            <option value="Quality">Quality</option>
+            <option value="Safety">Safety</option>
+            <option value="Environmental">Environmental</option>
+            <option value="Regulatory">Regulatory</option>
+            <option value="Internal">Internal</option>
+          </select></div>
+        <div class="form-field"><label>Scope</label>
+          <input class="form-input" formControlName="scope" placeholder="e.g. Production Line A, June 2026">
+          <span class="field-err" *ngIf="kf['scope'].invalid && kf['scope'].touched">Min 5 chars.</span></div>
+      </div></div>
+      <div class="modal-foot">
+        <button type="button" class="t-btn" (click)="showKpiModal=false">Cancel</button>
+        <button type="submit" class="t-btn t-btn-primary" [disabled]="kpiLoading">{{ kpiLoading ? 'Generating…' : 'Generate Report' }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── SHELL ───────────────────────────────────────────── -->
+<div class="shell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-row">
+        <div class="logo-sq">MT</div>
+        <div><div class="logo-name">ManuTrack</div><div class="logo-tag">Planner</div></div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-group">
+        <div class="nav-group-label">Manage</div>
+        <a class="nav-item" [class.active]="activeSection==='overview'" (click)="showSection('overview')">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Overview
+        </a>
+        <a class="nav-item" [class.active]="activeSection==='products'" (click)="showSection('products')">
+          <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          Products &amp; BOM
+        </a>
+        <a class="nav-item" [class.active]="activeSection==='workorders'" (click)="showSection('workorders')">
+          <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Work Orders
+        </a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">View</div>
+        <a class="nav-item" [class.active]="activeSection==='inventory'" (click)="showSection('inventory')">
+          <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          Inventory
+        </a>
+        <a class="nav-item" [class.active]="activeSection==='quality'" (click)="showSection('quality')">
+          <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Quality View
+        </a>
+        <a class="nav-item" [class.active]="activeSection==='analytics'" (click)="showSection('analytics')">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Analytics
+        </a>
+        <a class="nav-item" [class.active]="activeSection==='notifications'" (click)="showSection('notifications')">
+          <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Notifications <span class="nav-badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+        </a>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row" (click)="logout()">
+        <div class="av">{{ userInitials }}</div>
+        <div style="flex:1"><div class="u-name">{{ userName }}</div><div class="u-role">Planner</div></div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <header class="topbar">
+      <div class="breadcrumb">
+        <span class="breadcrumb-home">ManuTrack</span>
+        <span class="breadcrumb-sep">›</span>
+        <span class="breadcrumb-current">{{ sectionTitle }}</span>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-user">
+          <div class="topbar-av">{{ userInitials }}</div>
+          <div><div class="topbar-name">{{ userName }}</div><div class="topbar-role">Planner</div></div>
+        </div>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- ===== OVERVIEW ===== -->
+      <div *ngIf="activeSection==='overview'">
+        <div class="page-header">
+          <div class="page-intro">
+            <div class="page-title">Planner Overview</div>
+            <div class="page-sub">Manage products, BOMs, work orders and track production quality</div>
+          </div>
+        </div>
+
+        <div class="summary-strip" style="grid-template-columns:repeat(5,1fr)">
+          <div class="sum-card" (click)="showSection('products')" style="cursor:pointer">
+            <div class="sum-accent" style="background:var(--accent)"></div>
+            <div class="sum-label">Products</div><div class="sum-val">{{ products.length }}</div>
+            <div class="sum-desc">{{ activeProductsCount }} active · {{ draftProductsCount }} draft</div>
+          </div>
+          <div class="sum-card" (click)="showSection('workorders')" style="cursor:pointer">
+            <div class="sum-accent" style="background:var(--green)"></div>
+            <div class="sum-label">Work Orders</div><div class="sum-val">{{ workOrders.length }}</div>
+            <div class="sum-desc">{{ inProgressWOCount }} in progress</div>
+          </div>
+          <div class="sum-card" (click)="showSection('workorders')" style="cursor:pointer">
+            <div class="sum-accent" style="background:var(--red)"></div>
+            <div class="sum-label">Overdue</div><div class="sum-val">{{ overdueWOCount }}</div>
+            <div class="sum-desc" style="color:var(--red)" *ngIf="overdueWOCount > 0">Needs attention</div>
+          </div>
+          <div class="sum-card" (click)="showSection('quality')" style="cursor:pointer">
+            <div class="sum-accent" style="background:var(--amber)"></div>
+            <div class="sum-label">Open Defects</div><div class="sum-val">{{ openDefectsCount }}</div>
+            <div class="sum-desc" style="color:var(--amber)" *ngIf="openDefectsCount > 0">From quality inspections</div>
+          </div>
+          <div class="sum-card" (click)="showSection('workorders')" style="cursor:pointer">
+            <div class="sum-accent" style="background:#22c55e"></div>
+            <div class="sum-label">Completed WOs</div><div class="sum-val">{{ completedWOCount }}</div>
+            <div class="sum-desc">{{ woCompletionRate }}% completion rate</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <!-- Recent Work Orders -->
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">Recent Work Orders</div>
+              <a class="see-all" (click)="showSection('workorders')">View all →</a>
+            </div>
+            <div class="loading-row" *ngIf="workOrdersLoading">Loading…</div>
+            <table class="tbl" *ngIf="!workOrdersLoading">
+              <thead><tr><th>WO</th><th>Product</th><th>Qty</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let wo of workOrders.slice(0,5)">
+                  <td style="font-family:var(--mono);font-size:12px;color:var(--accent)">WO-{{ wo.workOrderID }}</td>
+                  <td style="font-weight:500">{{ wo.productName }}</td>
+                  <td style="font-family:var(--mono)">{{ wo.quantity }}</td>
+                  <td><span class="badge" [ngClass]="woStatusBadge(wo.status)">{{ wo.status }}</span></td>
+                </tr>
+                <tr *ngIf="workOrders.length===0"><td colspan="4" class="empty-td">No work orders yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Quality quick summary -->
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">Quality Snapshot</div>
+              <a class="see-all" (click)="showSection('quality')">View all →</a>
+            </div>
+            <div class="loading-row" *ngIf="qualityLoading">Loading…</div>
+            <div *ngIf="!qualityLoading" style="padding:16px;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:13px;color:var(--muted)">Inspections</span>
+                <span style="font-weight:700;font-family:var(--mono)">{{ inspections.length }}</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:13px;color:var(--muted)">Passed</span>
+                <span style="font-weight:700;color:#22c55e;font-family:var(--mono)">{{ passedInspCount }}</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:13px;color:var(--muted)">Failed</span>
+                <span style="font-weight:700;color:#ef4444;font-family:var(--mono)">{{ failedInspCount }}</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding-top:10px">
+                <span style="font-size:13px;color:var(--muted)">Open Defects</span>
+                <span style="font-weight:700;font-family:var(--mono)" [style.color]="openDefectsCount > 0 ? '#ef4444' : '#22c55e'">{{ openDefectsCount }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PRODUCTS & BOM ===== -->
+      <div *ngIf="activeSection==='products'">
+        <div class="page-header">
+          <div class="page-intro">
+            <div class="page-title">Products &amp; Bill of Materials</div>
+            <div class="page-sub">Register products and BOMs. Registering a material auto-adds it to Inventory with qty 0.</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="t-btn" (click)="showComponentModal=true; componentForm.reset()">+ Register Material</button>
+            <button class="t-btn t-btn-primary" (click)="showProductModal=true; productForm.reset({version:'1.0',status:'Draft'})">+ Register Product</button>
+          </div>
+        </div>
+
+        <!-- Products with BOM -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Products &amp; BOMs ({{ products.length }})</div>
+            <span style="font-size:11px;color:var(--muted)">Note: Only Admin can change product status</span>
+          </div>
+          <div class="loading-row" *ngIf="productsLoading">Loading…</div>
+          <div class="error-row" *ngIf="!productsLoading && productsError">⚠ {{ productsError }} <button class="retry-btn" (click)="loadProducts()">Retry</button></div>
+          <div *ngIf="!productsLoading && !productsError">
+            <div class="bom-product-block" *ngFor="let p of products">
+              <div class="bom-prod-row" (click)="toggleBom(p.productID)">
+                <div class="bom-chevron">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                    [style.transform]="isBomExpanded(p.productID) ? 'rotate(90deg)' : 'rotate(0deg)'"
+                    style="transition:transform 0.2s;width:14px;height:14px"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+                <div class="bom-prod-info">
+                  <span class="bom-prod-name">{{ p.name }}</span>
+                  <span class="bom-prod-meta">v{{ p.version }} · {{ p.category }}</span>
+                </div>
+                <span class="badge" [ngClass]="statusBadgeClass(p.status)">{{ p.status }}</span>
+                <span class="bom-comp-count">{{ (bomByProduct[p.productID]?.length || 0) }} BOM{{ (bomByProduct[p.productID]?.length || 0) !== 1 ? 's' : '' }}</span>
+                <button class="icon-btn" *ngIf="p.status==='Active'" (click)="$event.stopPropagation(); openBomForProduct(p)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:12px;height:12px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Add BOM
+                </button>
+                <span *ngIf="p.status!=='Active'" style="font-size:11px;color:var(--muted2)">Publish to add BOM</span>
+              </div>
+              <!-- Inline BOM -->
+              <div class="bom-inline-panel" *ngIf="isBomExpanded(p.productID)">
+                <div class="bom-inline-header">
+                  <span style="font-size:13px;font-weight:600">{{ p.name }} — BOM</span>
+                  <button class="t-btn t-btn-primary" style="font-size:12px;padding:5px 12px" *ngIf="p.status==='Active'" (click)="openBomForProduct(p)">+ Add BOM</button>
+                </div>
+                <div class="bom-inline-empty" *ngIf="!bomByProduct[p.productID]?.length">
+                  No BOM entries yet. <a *ngIf="p.status==='Active'" style="color:var(--accent);cursor:pointer" (click)="openBomForProduct(p)">+ Add first entry</a>
+                </div>
+                <table class="tbl" *ngIf="bomByProduct[p.productID]?.length">
+                  <thead><tr><th>#</th><th>Material</th><th>Type</th><th>Qty</th><th>Unit</th><th></th></tr></thead>
+                  <tbody>
+                    <tr *ngFor="let b of bomByProduct[p.productID]; let i=index">
+                      <td style="font-family:var(--mono);color:var(--muted);font-size:12px">{{ i+1 }}</td>
+                      <td style="font-weight:600">{{ b.componentName }}</td>
+                      <td><span class="badge" [ngClass]="materialTypeBadge(b.componentMaterialType)" style="font-size:11px">{{ b.componentMaterialType }}</span></td>
+                      <td style="font-family:var(--mono);font-size:15px;font-weight:700">{{ b.quantity }}</td>
+                      <td style="font-family:var(--mono);font-size:12px;color:var(--muted)">{{ b.componentUnit }}</td>
+                      <td><button class="icon-btn icon-btn-danger" style="padding:4px 8px;font-size:11px" (click)="deleteBomEntry(b.bomID)">Remove</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="empty-row" *ngIf="products.length===0">
+              <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8"/></svg>
+              No products yet.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== WORK ORDERS ===== -->
+      <div *ngIf="activeSection==='workorders'">
+        <div class="page-header">
+          <div class="page-intro">
+            <div class="page-title">Work Orders</div>
+            <div class="page-sub">Create and manage manufacturing work orders and tasks</div>
+          </div>
+          <button class="t-btn t-btn-primary" (click)="showWorkOrderModal=true; workOrderForm.reset()">+ Create Work Order</button>
+        </div>
+        <div class="summary-strip" style="grid-template-columns:repeat(3,1fr)">
+          <div class="sum-card"><div class="sum-accent" style="background:var(--accent)"></div><div class="sum-label">Total</div><div class="sum-val">{{ workOrders.length }}</div></div>
+          <div class="sum-card"><div class="sum-accent" style="background:var(--green)"></div><div class="sum-label">In Progress</div><div class="sum-val">{{ inProgressCount }}</div></div>
+          <div class="sum-card"><div class="sum-accent" style="background:var(--red)"></div><div class="sum-label">Overdue</div><div class="sum-val">{{ overdueCount }}</div></div>
+        </div>
+        <div class="card">
+          <div class="loading-row" *ngIf="workOrdersLoading">Loading…</div>
+          <div class="error-row" *ngIf="!workOrdersLoading && workOrdersError">⚠ {{ workOrdersError }} <button class="retry-btn" (click)="loadWorkOrders()">Retry</button></div>
+          <div *ngIf="!workOrdersLoading && !workOrdersError">
+            <div class="wo-block" *ngFor="let wo of workOrders">
+              <div class="wo-row" (click)="toggleWorkOrder(wo.workOrderID)">
+                <div class="wo-chevron">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                    [style.transform]="isWorkOrderExpanded(wo.workOrderID) ? 'rotate(90deg)' : 'rotate(0deg)'"
+                    style="transition:transform 0.2s;width:14px;height:14px"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+                <div class="wo-id">WO-{{ wo.workOrderID }}</div>
+                <div class="wo-main">
+                  <span class="wo-product">{{ wo.productName }}</span>
+                  <span class="wo-meta">Qty: {{ wo.quantity }} · {{ wo.startDate | date:'dd MMM' }} → {{ wo.endDate | date:'dd MMM yy' }}</span>
+                </div>
+                <span class="badge" [ngClass]="woStatusBadge(wo.status)">{{ wo.status }}</span>
+                <span class="wo-task-count">{{ (tasksByWorkOrder[wo.workOrderID] || []).length }} task{{ (tasksByWorkOrder[wo.workOrderID] || []).length !== 1 ? 's' : '' }}</span>
+                <div class="action-btns" (click)="$event.stopPropagation()">
+                  <button class="icon-btn icon-btn-danger" style="padding:4px 8px;font-size:11px" (click)="deleteWorkOrder(wo)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:12px;height:12px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                    Delete
+                  </button>
+                </div>
+              </div>
+              <div class="wo-tasks-panel" *ngIf="isWorkOrderExpanded(wo.workOrderID)">
+                <div class="wo-tasks-header">
+                  <span style="font-size:13px;font-weight:600">Tasks</span>
+                  <button *ngIf="wo.status !== 'Completed' && wo.status !== 'Cancelled'"
+                    class="t-btn t-btn-primary" style="font-size:12px;padding:5px 12px" (click)="openAddTask(wo)">+ Add Task</button>
+                </div>
+                <div class="wo-tasks-empty" *ngIf="!(tasksByWorkOrder[wo.workOrderID]?.length)">
+                  No tasks yet.
+                  <a *ngIf="wo.status !== 'Completed' && wo.status !== 'Cancelled'"
+                    style="color:var(--accent);cursor:pointer" (click)="openAddTask(wo)">+ Add first task</a>
+                </div>
+                <table class="tbl" *ngIf="tasksByWorkOrder[wo.workOrderID]?.length">
+                  <thead><tr><th>#</th><th>Description</th><th>Assigned To</th><th>Status</th><th></th></tr></thead>
+                  <tbody>
+                    <tr *ngFor="let t of tasksByWorkOrder[wo.workOrderID]; let i=index">
+                      <td style="font-family:var(--mono);color:var(--muted);font-size:12px">{{ i+1 }}</td>
+                      <td style="font-weight:500">{{ t.description }}</td>
+                      <td style="font-size:12px;color:var(--muted)">{{ t.assignedTo }}</td>
+                      <td>
+                        <span class="badge" [ngClass]="woStatusBadge(t.status)">{{ t.status }}</span>
+                      </td>
+                      <td>
+                        <button *ngIf="wo.status !== 'Completed' && wo.status !== 'Cancelled'"
+                          class="icon-btn icon-btn-danger" style="padding:3px 8px;font-size:11px" (click)="deleteTask(t)">Remove</button>
+                        <span *ngIf="wo.status === 'Completed' || wo.status === 'Cancelled'"
+                          style="font-size:11px;color:var(--muted);font-style:italic">Locked</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="empty-row" *ngIf="workOrders.length===0">
+              <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg>
+              No work orders yet.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== INVENTORY (view only) ===== -->
+      <div *ngIf="activeSection==='inventory'">
+        <div class="page-header">
+          <div class="page-intro">
+            <div class="page-title">Inventory</div>
+            <div class="page-sub">Monitor stock levels to plan production. Stock management is handled by the Inventory Manager.</div>
+          </div>
+          <span class="readonly-badge">👁 View Only</span>
+        </div>
+        <div *ngIf="lowStockAlert > 0" class="low-stock-alert" style="margin-bottom:16px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:18px;height:18px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span><strong>{{ lowStockAlert }} item(s)</strong> are low/out of stock. Production may be affected.</span>
+        </div>
+        <div class="card">
+          <div class="loading-row" *ngIf="inventoryLoading">Loading…</div>
+          <div class="error-row" *ngIf="!inventoryLoading && inventoryError">⚠ {{ inventoryError }} <button class="retry-btn" (click)="loadInventory()">Retry</button></div>
+          <table class="tbl" *ngIf="!inventoryLoading && !inventoryError">
+            <thead><tr><th>INV ID</th><th>Item</th><th>Type</th><th>Qty On Hand</th><th>Min Qty</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let item of inventoryItems" [class.row-warn]="item.status==='LowStock'" [class.row-alert]="item.status==='OutOfStock'">
+                <td style="font-family:var(--mono);font-size:12px;color:var(--accent)">INV-{{ item.inventoryID }}</td>
+                <td style="font-weight:600">{{ item.productName }}</td>
+                <td><span class="badge" [ngClass]="item.itemType==='RawMaterial' ? 'b-planner' : 'b-inventory'" style="font-size:10px">{{ item.itemType === 'RawMaterial' ? 'Raw Material' : 'Product' }}</span></td>
+
+                <td style="font-family:var(--mono);font-size:15px;font-weight:700"
+                  [style.color]="item.status==='OutOfStock' ? 'var(--red)' : item.status==='LowStock' ? 'var(--amber)' : 'var(--green)'">{{ item.quantityOnHand }}</td>
+                <td style="font-family:var(--mono);color:var(--muted)">{{ item.minimumQuantity }}</td>
+                <td><span class="badge" [ngClass]="invStatusBadge(item.status)"><span class="dot"></span> {{ item.status }}</span></td>
+              </tr>
+              <tr *ngIf="!inventoryItems.length && !inventoryLoading"><td colspan="6" class="empty-td">No inventory items.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===== QUALITY VIEW ===== -->
+      <div *ngIf="activeSection==='quality'">
+        <div class="page-header">
+          <div class="page-intro">
+            <div class="page-title">Quality View</div>
+            <div class="page-sub">View inspection results and defects for work orders you planned (read-only)</div>
+          </div>
+          <span class="readonly-badge">👁 View Only</span>
+        </div>
+        <div class="loading-row" *ngIf="qualityLoading">Loading…</div>
+        <div *ngIf="!qualityLoading">
+          <div class="summary-strip">
+            <div class="sum-card"><div class="sum-accent" style="background:var(--accent)"></div><div class="sum-label">Inspections</div><div class="sum-val">{{ inspections.length }}</div></div>
+            <div class="sum-card"><div class="sum-accent" style="background:#22c55e"></div><div class="sum-label">Passed</div><div class="sum-val">{{ passedInspCount }}</div></div>
+            <div class="sum-card"><div class="sum-accent" style="background:var(--red)"></div><div class="sum-label">Failed</div><div class="sum-val">{{ failedInspCount }}</div></div>
+            <div class="sum-card"><div class="sum-accent" style="background:var(--amber)"></div><div class="sum-label">Open Defects</div><div class="sum-val">{{ openDefectsCount }}</div></div>
+          </div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-head"><div class="card-title">Inspections</div><div class="card-count">{{ inspections.length }}</div></div>
+            <table class="tbl">
+              <thead><tr><th>ID</th><th>Work Order</th><th>Inspector</th><th>Result</th><th>Status</th><th>Date</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let i of inspections">
+                  <td style="font-family:var(--mono);font-size:12px;color:var(--accent)">INS-{{ i.inspectionID }}</td>
+                  <td style="font-weight:500">WO-{{ i.workOrderID }}</td>
+                  <td style="font-size:12px;color:var(--muted)">{{ i.inspectorName }}</td>
+                  <td><span class="badge" [ngClass]="inspResultBadge(i.result)">{{ i.result || 'Pending' }}</span></td>
+                  <td><span class="badge b-draft">{{ i.status }}</span></td>
+                  <td style="font-family:var(--mono);font-size:12px;color:var(--muted)">{{ i.inspectionDate | date:'dd MMM yy' }}</td>
+                </tr>
+                <tr *ngIf="!inspections.length"><td colspan="6" class="empty-td">No inspections yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title">Defects</div><div class="card-count">{{ defects.length }}</div></div>
+            <table class="tbl">
+              <thead><tr><th>ID</th><th>Inspection</th><th>Description</th><th>Severity</th><th>Status</th><th>Date</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let d of defects">
+                  <td style="font-family:var(--mono);font-size:12px;color:var(--accent)">DEF-{{ d.defectID }}</td>
+                  <td style="font-weight:500">INS-{{ d.inspectionID }}</td>
+                  <td style="font-size:12px;max-width:200px">{{ d.description }}</td>
+                  <td><span class="badge" [ngClass]="defectSeverityBadge(d.severity)">{{ d.severity }}</span></td>
+                  <td><span class="badge b-draft">{{ d.status }}</span></td>
+                  <td style="font-family:var(--mono);font-size:12px;color:var(--muted)">{{ d.createdDate | date:'dd MMM yy' }}</td>
+                </tr>
+                <tr *ngIf="!defects.length"><td colspan="6" class="empty-td">No defects reported yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== ANALYTICS ===== -->
+      <div *ngIf="activeSection==='analytics'">
+        <div class="page-header">
+          <div class="page-intro">
+            <div class="page-title">Analytics</div>
+            <div class="page-sub">Production performance — work orders, tasks and quality overview</div>
+          </div>
+        </div>
+
+        <!-- KPI stat cards -->
+        <div class="an-kpi-row">
+          <div class="an-kpi-card" style="--kc:var(--accent)">
+            <div class="an-kpi-accent"></div>
+            <div class="an-kpi-body">
+              <div class="an-kpi-label">TOTAL WORK ORDERS</div>
+              <div class="an-kpi-val">{{ workOrders.length }}</div>
+              <div class="an-kpi-sub">{{ completedWOCount }} completed</div>
+            </div>
+            <svg class="an-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <div class="an-kpi-card" style="--kc:#22c55e">
+            <div class="an-kpi-accent"></div>
+            <div class="an-kpi-body">
+              <div class="an-kpi-label">TOTAL TASKS</div>
+              <div class="an-kpi-val">{{ totalTasksCount }}</div>
+              <div class="an-kpi-sub">{{ completedTasksCount }} completed</div>
+            </div>
+            <svg class="an-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </div>
+          <div class="an-kpi-card" style="--kc:#a855f7">
+            <div class="an-kpi-accent"></div>
+            <div class="an-kpi-body">
+              <div class="an-kpi-label">TOTAL PRODUCTS</div>
+              <div class="an-kpi-val">{{ products.length }}</div>
+              <div class="an-kpi-sub">{{ activeProductsCount }} active · {{ draftProductsCount }} draft</div>
+            </div>
+            <svg class="an-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          </div>
+          <div class="an-kpi-card" style="--kc:#f59e0b">
+            <div class="an-kpi-accent"></div>
+            <div class="an-kpi-body">
+              <div class="an-kpi-label">INSPECTIONS</div>
+              <div class="an-kpi-val">{{ inspections.length }}</div>
+              <div class="an-kpi-sub">{{ openDefectsCount }} open defects</div>
+            </div>
+            <svg class="an-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="an-charts-row">
+          <!-- WO Status Doughnut -->
+          <div class="an-chart-card">
+            <div class="an-chart-head"><span class="an-chart-title">Work Order Status</span><span class="an-chart-sub">{{ workOrders.length }} total</span></div>
+            <div class="an-donut-wrap">
+              <div class="an-donut-ring" [style.background]="woDonutGradient()">
+                <div class="an-donut-center"><div class="an-donut-num">{{ workOrders.length }}</div><div class="an-donut-lbl">WOs</div></div>
+              </div>
+              <div class="an-donut-legend">
+                <div class="an-legend-row"><span class="an-legend-dot" style="background:#22c55e"></span><span class="an-legend-name">Completed</span><span class="an-legend-val">{{ completedWOCount }}</span><span class="an-legend-pct">{{ woCompletionRate }}%</span></div>
+                <div class="an-legend-row"><span class="an-legend-dot" style="background:#3b82f6"></span><span class="an-legend-name">In Progress</span><span class="an-legend-val">{{ inProgressWOCount }}</span><span class="an-legend-pct">{{ woFunnelPct('InProgress') }}%</span></div>
+                <div class="an-legend-row"><span class="an-legend-dot" style="background:#f59e0b"></span><span class="an-legend-name">Pending</span><span class="an-legend-val">{{ pendingWOCount }}</span><span class="an-legend-pct">{{ woFunnelPct('Pending') }}%</span></div>
+                <div class="an-legend-row"><span class="an-legend-dot" style="background:#ef4444"></span><span class="an-legend-name">Overdue</span><span class="an-legend-val">{{ overdueWOCount }}</span><span class="an-legend-pct">—</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Task Status Doughnut -->
+          <div class="an-chart-card">
+            <div class="an-chart-head"><span class="an-chart-title">Task Status</span><span class="an-chart-sub">{{ totalTasksCount }} total</span></div>
+            <div class="an-donut-wrap">
+              <div class="an-donut-ring" [style.background]="taskDonutGradient()">
+                <div class="an-donut-center"><div class="an-donut-num">{{ totalTasksCount }}</div><div class="an-donut-lbl">TASKS</div></div>
+              </div>
+              <div class="an-donut-legend">
+                <div class="an-legend-row"><span class="an-legend-dot" style="background:#22c55e"></span><span class="an-legend-name">Completed</span><span class="an-legend-val">{{ completedTasksCount }}</span><span class="an-legend-pct">{{ totalTasksCount ? (completedTasksCount/totalTasksCount*100 | number:'1.0-0') : 0 }}%</span></div>
+                <div class="an-legend-row"><span class="an-legend-dot" style="background:#3b82f6"></span><span class="an-legend-name">In Progress</span><span class="an-legend-val">{{ inProgressTasksCount }}</span><span class="an-legend-pct">{{ totalTasksCount ? (inProgressTasksCount/totalTasksCount*100 | number:'1.0-0') : 0 }}%</span></div>
+                <div class="an-legend-row"><span class="an-legend-dot" style="background:#f59e0b"></span><span class="an-legend-name">Pending</span><span class="an-legend-val">{{ pendingTasksCount }}</span><span class="an-legend-pct">{{ totalTasksCount ? (pendingTasksCount/totalTasksCount*100 | number:'1.0-0') : 0 }}%</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Production Health gauges -->
+          <div class="an-chart-card">
+            <div class="an-chart-head"><span class="an-chart-title">Production Health</span><span class="an-chart-sub">key rates</span></div>
+            <div class="an-gauges-wrap">
+              <div class="an-gauge">
+                <div class="an-gauge-ring" [style.background]="gaugeGradient(woCompletionRate)">
+                  <div class="an-gauge-inner">
+                    <div class="an-gauge-pct" [style.color]="gaugeColor(woCompletionRate)">{{ woCompletionRate }}%</div>
+                    <div class="an-gauge-lbl">COMPLETION</div>
+                  </div>
+                </div>
+                <div class="an-gauge-name">WO Completion</div>
+              </div>
+              <div class="an-gauge">
+                <div class="an-gauge-ring" [style.background]="gaugeGradient(yieldRate, 70, 40)">
+                  <div class="an-gauge-inner">
+                    <div class="an-gauge-pct" [style.color]="gaugeColor(yieldRate, 70, 40)">{{ yieldRate }}%</div>
+                    <div class="an-gauge-lbl">YIELD</div>
+                  </div>
+                </div>
+                <div class="an-gauge-name">Inspection Pass</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="an-charts-row an-charts-row--2col">
+
+          <!-- Production Funnel -->
+          <div class="an-chart-card">
+            <div class="an-chart-head"><span class="an-chart-title">Production Funnel</span><span class="an-chart-sub">progression by status</span></div>
+            <div class="an-funnel">
+              <div class="an-funnel-row" *ngFor="let s of [['Pending','#f59e0b'],['InProgress','#3b82f6'],['Completed','#22c55e'],['Cancelled','#ef4444']]">
+                <div class="an-funnel-label">{{ s[0] }}</div>
+                <div class="an-funnel-bar-wrap">
+                  <div class="an-funnel-bar" [style.width.%]="woFunnelPct(s[0])" [style.background]="s[1]"></div>
+                </div>
+                <div class="an-funnel-right">
+                  <div class="an-funnel-num">{{ workOrders.filter(w => w.status === s[0]).length }}</div>
+                  <div class="an-funnel-pct">{{ woFunnelPct(s[0]) }}%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Product & Quality overview -->
+          <div class="an-chart-card">
+            <div class="an-chart-head"><span class="an-chart-title">Products &amp; Quality</span><span class="an-chart-sub">status breakdown</span></div>
+
+            <div class="an-section-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="width:14px;height:14px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+              <span>Products by Status</span>
+            </div>
+            <div class="an-bar-list" style="margin-bottom:20px">
+              <div class="an-bar-row" *ngFor="let s of [['Active','#22c55e'],['Draft','#6b7280'],['Discontinued','#ef4444']]">
+                <div class="an-bar-label" style="font-size:11px">{{ s[0] }}</div>
+                <div class="an-bar-track"><div class="an-bar-fill" [style.width.%]="products.length ? (products.filter(p=>p.status===s[0]).length/products.length*100) : 0" [style.background]="s[1]"></div></div>
+                <div class="an-bar-count">{{ products.filter(p => p.status === s[0]).length }}</div>
+              </div>
+            </div>
+
+            <div class="an-section-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="width:14px;height:14px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+              <span>Defects</span>
+              <span class="an-section-count">{{ defects.length }}</span>
+            </div>
+            <div class="an-bar-list">
+              <div class="an-bar-row"><div class="an-bar-label" style="font-size:11px">Critical</div><div class="an-bar-track"><div class="an-bar-fill" [style.width.%]="maxDefSev ? (criticalDefectsCount/maxDefSev*100) : 0" style="background:#ef4444"></div></div><div class="an-bar-count">{{ criticalDefectsCount }}</div></div>
+              <div class="an-bar-row"><div class="an-bar-label" style="font-size:11px">High</div><div class="an-bar-track"><div class="an-bar-fill" [style.width.%]="maxDefSev ? (highDefectsCount/maxDefSev*100) : 0" style="background:#f97316"></div></div><div class="an-bar-count">{{ highDefectsCount }}</div></div>
+              <div class="an-bar-row"><div class="an-bar-label" style="font-size:11px">Medium</div><div class="an-bar-track"><div class="an-bar-fill" [style.width.%]="maxDefSev ? (mediumDefectsCount/maxDefSev*100) : 0" style="background:#f59e0b"></div></div><div class="an-bar-count">{{ mediumDefectsCount }}</div></div>
+              <div class="an-bar-row"><div class="an-bar-label" style="font-size:11px">Low</div><div class="an-bar-track"><div class="an-bar-fill" [style.width.%]="maxDefSev ? (lowDefectsCount/maxDefSev*100) : 0" style="background:#3b82f6"></div></div><div class="an-bar-count">{{ lowDefectsCount }}</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== NOTIFICATIONS ===== -->
+      <div *ngIf="activeSection==='notifications'">
+        <div class="page-header">
+          <div class="page-intro">
+            <div class="page-title">My Notifications</div>
+            <div class="page-sub">{{ unreadCount > 0 ? unreadCount + ' unread notification(s)' : 'All caught up!' }}</div>
+          </div>
+          <button class="t-btn" (click)="loadNotifications()">↻ Refresh</button>
+        </div>
+        <div class="card">
+          <div class="loading-row" *ngIf="notificationsLoading">Loading…</div>
+          <div *ngIf="!notificationsLoading">
+            <div class="notif-row" *ngFor="let n of notifications" [class.notif-unread]="n.status==='Unread'">
+              <div class="notif-icon" [class.unread]="n.status==='Unread'">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:16px;height:16px"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              </div>
+              <div class="notif-body">
+                <div style="font-weight:600;font-size:13px">{{ n.title }}</div>
+                <div style="font-size:12.5px;color:var(--text2);margin-top:2px">{{ n.message }}</div>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                  <span class="badge b-planner" style="font-size:10px">{{ n.category }}</span>
+                  <span class="badge" [ngClass]="notifPriorityBadge(n.priority)" style="font-size:10px">{{ n.priority }}</span>
+                  <span style="font-size:11px;color:var(--muted)">{{ n.createdDate | date:'dd MMM · h:mm a' }}</span>
+                </div>
+              </div>
+              <button class="icon-btn" *ngIf="n.status==='Unread'" (click)="markRead(n.notificationID)" style="flex-shrink:0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:13px;height:13px"><polyline points="20 6 9 17 4 12"/></svg>
+                Mark Read
+              </button>
+              <span class="badge b-active" *ngIf="n.status==='Read'" style="font-size:10px;flex-shrink:0">Read</span>
+            </div>
+            <div class="empty-row" *ngIf="notifications.length===0">
+              <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
+              No notifications yet.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /shell -->

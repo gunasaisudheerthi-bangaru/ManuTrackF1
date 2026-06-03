@@ -1,0 +1,597 @@
+<!-- INLINE PAGE NOTIFICATION -->
+<ng-container *ngIf="toastMsg || errorAlert">
+  <div class="page-notification" [class.notif-success]="!!toastMsg" [class.notif-error]="!!errorAlert">
+    <div class="notif-icon-wrap">
+      <svg *ngIf="toastMsg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+      <svg *ngIf="errorAlert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </div>
+    <span class="notif-text">{{ toastMsg || errorAlert }}</span>
+    <button class="notif-close" (click)="toastMsg=''; errorAlert=''">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+</ng-container>
+
+<!-- Create Inspection Modal -->
+<div class="modal-overlay" *ngIf="showInspectionModal" (click)="showInspectionModal=false">
+  <div class="modal" style="max-width:480px" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <div><div class="modal-title">Create Inspection</div><div class="modal-subtitle">Schedule a quality inspection for a work order</div></div>
+      <button class="modal-close" (click)="showInspectionModal=false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <form [formGroup]="inspectionForm" (ngSubmit)="createInspection()">
+      <div class="modal-body"><div class="form-grid" style="grid-template-columns:1fr">
+        <div class="form-field"><label>Work Order <span style="color:var(--muted2);font-weight:400;font-size:10px">— Completed only</span></label>
+          <select class="form-input" formControlName="workOrderID">
+            <option value="">Select completed work order…</option>
+            <option *ngFor="let wo of completedWorkOrders" [value]="wo.workOrderID">WO-{{ wo.workOrderID }} · {{ wo.productName }}</option>
+          </select>
+          <span class="field-err" *ngIf="if_['workOrderID'].invalid && if_['workOrderID'].touched">Required.</span>
+          <span style="font-size:11px;color:var(--amber);margin-top:3px;display:block" *ngIf="completedWorkOrders.length === 0 && !workOrdersLoading">
+            No completed work orders available yet.
+          </span></div>
+        <div class="form-field"><label>Inspection Date</label>
+          <input class="form-input" formControlName="inspectionDate" type="date">
+          <span class="field-err" *ngIf="if_['inspectionDate'].invalid && if_['inspectionDate'].touched">Required (cannot be in the past).</span></div>
+        <div class="form-field"><label>Inspector</label>
+          <div class="fixed-field"><span class="fixed-field-val">{{ userName }}</span><span class="badge b-active" style="font-size:10px">You</span></div></div>
+        <div class="form-field"><label>Notes <span style="color:var(--muted2);font-weight:400">(optional)</span></label>
+          <input class="form-input" formControlName="notes" placeholder="Any inspection notes…"></div>
+      </div></div>
+      <div class="modal-foot">
+        <button type="button" class="t-btn" (click)="showInspectionModal=false">Cancel</button>
+        <button type="submit" class="t-btn t-btn-primary" [disabled]="inspectionLoading">{{ inspectionLoading ? 'Creating…' : 'Create Inspection' }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Update Result Modal -->
+<div class="modal-overlay" *ngIf="showResultModal" (click)="showResultModal=false">
+  <div class="modal" style="max-width:440px" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <div><div class="modal-title">Update Inspection Result</div><div class="modal-subtitle">INS-{{ selectedInspectionForResult?.inspectionID }} · WO-{{ selectedInspectionForResult?.workOrderID }}</div></div>
+      <button class="modal-close" (click)="showResultModal=false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <form [formGroup]="resultForm" (ngSubmit)="submitResult()">
+      <div class="modal-body"><div class="form-grid" style="grid-template-columns:1fr">
+        <div class="form-field"><label>Result</label>
+          <div class="result-toggle">
+            <button type="button" class="result-btn pass" [class.active]="rtf['result'].value==='Pass'" (click)="resultForm.patchValue({result:'Pass'})">✓ Pass</button>
+            <button type="button" class="result-btn fail" [class.active]="rtf['result'].value==='Fail'" (click)="resultForm.patchValue({result:'Fail'})">✗ Fail</button>
+          </div>
+          <span class="field-err" *ngIf="rtf['result'].invalid && rtf['result'].touched">Select Pass or Fail.</span></div>
+        <div class="form-field"><label>Status</label>
+          <select class="form-input" formControlName="status">
+            <option value="InProgress">InProgress</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select></div>
+        <div class="form-field"><label>Notes <span style="color:var(--muted2);font-weight:400">(optional)</span></label>
+          <input class="form-input" formControlName="notes" placeholder="Inspection findings…"></div>
+      </div></div>
+      <div class="modal-foot">
+        <button type="button" class="t-btn" (click)="showResultModal=false">Cancel</button>
+        <button type="submit" class="t-btn t-btn-primary" [disabled]="resultLoading">{{ resultLoading ? 'Saving…' : 'Save Result' }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Log Defect Modal -->
+<div class="modal-overlay" *ngIf="showDefectModal" (click)="showDefectModal=false">
+  <div class="modal" style="max-width:460px" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <div><div class="modal-title">Log Defect</div><div class="modal-subtitle">INS-{{ selectedInspectionForDefect?.inspectionID }} · WO-{{ selectedInspectionForDefect?.workOrderID }}</div></div>
+      <button class="modal-close" (click)="showDefectModal=false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <form [formGroup]="defectForm" (ngSubmit)="createDefect()">
+      <div class="modal-body"><div class="form-grid" style="grid-template-columns:1fr">
+        <div class="form-field"><label>Defect Description</label>
+          <input class="form-input" formControlName="description" placeholder="e.g. Surface crack on panel joint">
+          <span class="field-err" *ngIf="df['description'].invalid && df['description'].touched">Min 5 chars.</span></div>
+        <div class="form-field"><label>Severity</label>
+          <div class="severity-options">
+            <button type="button" *ngFor="let s of ['Low','Medium','High','Critical']"
+              class="severity-btn" [class]="'sev-'+s.toLowerCase()" [class.active]="df['severity'].value===s"
+              (click)="defectForm.patchValue({severity:s})">{{ s }}</button>
+          </div>
+          <span class="field-err" *ngIf="df['severity'].invalid && df['severity'].touched">Select severity.</span></div>
+      </div></div>
+      <div class="modal-foot">
+        <button type="button" class="t-btn" (click)="showDefectModal=false">Cancel</button>
+        <button type="submit" class="t-btn t-btn-primary" style="background:var(--red)" [disabled]="defectLoading">{{ defectLoading ? 'Logging…' : 'Log Defect' }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Resolve Defect Modal -->
+<div class="modal-overlay" *ngIf="showResolveModal" (click)="showResolveModal=false">
+  <div class="modal" style="max-width:440px" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <div><div class="modal-title">Resolve Defect</div><div class="modal-subtitle">DEF-{{ selectedDefectForResolve?.defectID }} · {{ selectedDefectForResolve?.severity }}</div></div>
+      <button class="modal-close" (click)="showResolveModal=false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <form [formGroup]="resolveForm" (ngSubmit)="submitResolve()">
+      <div class="modal-body"><div class="form-grid" style="grid-template-columns:1fr">
+        <div class="form-field"><label>Resolution Description</label>
+          <textarea class="form-input" formControlName="resolutionDescription" rows="3" style="resize:vertical" placeholder="Describe how the defect was resolved…"></textarea>
+          <span class="field-err" *ngIf="rf['resolutionDescription'].invalid && rf['resolutionDescription'].touched">Min 10 chars.</span></div>
+      </div></div>
+      <div class="modal-foot">
+        <button type="button" class="t-btn" (click)="showResolveModal=false">Cancel</button>
+        <button type="submit" class="t-btn t-btn-primary" [disabled]="resolveLoading">{{ resolveLoading ? 'Resolving…' : 'Mark Resolved' }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- SHELL -->
+<div class="shell">
+  <aside class="sidebar">
+    <div class="logo"><div class="logo-row"><div class="logo-sq">MT</div><div><div class="logo-name">ManuTrack</div><div class="logo-tag">Inspector</div></div></div></div>
+    <nav class="nav">
+      <div class="nav-group">
+        <div class="nav-group-label">Quality Work</div>
+        <a class="nav-item" [class.active]="activeSection==='overview'" (click)="showSection('overview')">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Overview
+        </a>
+        <a class="nav-item" [class.active]="activeSection==='inspections'" (click)="showSection('inspections')">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Inspections
+          <span class="nav-badge" *ngIf="inspections.length > 0">{{ inspections.length }}</span>
+        </a>
+        <a class="nav-item" [class.active]="activeSection==='defects'" (click)="showSection('defects')">
+          <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Defects
+          <span class="nav-badge" *ngIf="openDefectsCount > 0">{{ openDefectsCount }}</span>
+        </a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">View</div>
+        <a class="nav-item" [class.active]="activeSection==='workorders'" (click)="showSection('workorders')">
+          <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg>
+          Work Orders
+        </a>
+        <a class="nav-item" [class.active]="activeSection==='products'" (click)="showSection('products')">
+          <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          Products &amp; BOM
+        </a>
+        <a class="nav-item" [class.active]="activeSection==='analytics'" (click)="showSection('analytics')">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Analytics
+        </a>
+        <a class="nav-item" [class.active]="activeSection==='notifications'" (click)="showSection('notifications')">
+          <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Notifications <span class="nav-badge" *ngIf="unreadCount>0">{{ unreadCount }}</span>
+        </a>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row" (click)="logout()">
+        <div class="av">{{ userInitials }}</div>
+        <div style="flex:1"><div class="u-name">{{ userName }}</div><div class="u-role">Quality Inspector</div></div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="breadcrumb"><span class="breadcrumb-home">ManuTrack</span><span class="breadcrumb-sep">›</span><span class="breadcrumb-current">{{ sectionTitle }}</span></div>
+      <div class="topbar-right"><div class="topbar-user"><div class="topbar-av">{{ userInitials }}</div><div><div class="topbar-name">{{ userName }}</div><div class="topbar-role">Quality Inspector</div></div></div></div>
+    </header>
+
+    <div class="content">
+
+      <!-- OVERVIEW -->
+      <div *ngIf="activeSection==='overview'">
+        <div class="page-header"><div class="page-intro"><div class="page-title">Quality Overview</div><div class="page-sub">Monitor inspections and defects across all work orders</div></div></div>
+        <div class="summary-strip" style="grid-template-columns:repeat(5,1fr)">
+          <div class="sum-card" (click)="showSection('inspections')" style="cursor:pointer"><div class="sum-accent" style="background:var(--accent)"></div><div class="sum-label">Total Inspections</div><div class="sum-val">{{ inspections.length }}</div><div class="sum-desc">{{ yieldRate }}% pass rate</div></div>
+          <div class="sum-card" (click)="showSection('inspections')" style="cursor:pointer"><div class="sum-accent" style="background:#22c55e"></div><div class="sum-label">Passed</div><div class="sum-val">{{ passedCount }}</div></div>
+          <div class="sum-card" (click)="showSection('inspections')" style="cursor:pointer"><div class="sum-accent" style="background:#ef4444"></div><div class="sum-label">Failed</div><div class="sum-val">{{ failedCount }}</div></div>
+          <div class="sum-card" (click)="showSection('defects')" style="cursor:pointer"><div class="sum-accent" style="background:var(--red)"></div><div class="sum-label">Open Defects</div><div class="sum-val">{{ openDefectsCount }}</div><div class="sum-desc" style="color:var(--red)" *ngIf="criticalDefectsCount>0">{{ criticalDefectsCount }} critical!</div></div>
+          <div class="sum-card" (click)="showSection('defects')" style="cursor:pointer"><div class="sum-accent" style="background:var(--amber)"></div><div class="sum-label">Total Defects</div><div class="sum-val">{{ defects.length }}</div><div class="sum-desc">{{ resolvedDefectsCount }} resolved</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card"><div class="card-head"><div class="card-title">Recent Inspections</div><a class="see-all" (click)="showSection('inspections')">View all →</a></div>
+            <div class="loading-row" *ngIf="inspectionsLoading">Loading…</div>
+            <table class="tbl" *ngIf="!inspectionsLoading"><thead><tr><th>ID</th><th>WO</th><th>Date</th><th>Result</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let i of inspections.slice(0,5)">
+                  <td style="font-family:var(--mono);font-size:12px;color:var(--accent)">INS-{{ i.inspectionID }}</td>
+                  <td style="font-weight:500">WO-{{ i.workOrderID }}</td>
+                  <td style="font-size:12px;color:var(--muted)">{{ i.inspectionDate | date:'dd MMM yy' }}</td>
+                  <td><span class="badge" [ngClass]="inspResultBadge(i.result)" *ngIf="i.result">{{ i.result }}</span><span style="font-size:11px;color:var(--muted2)" *ngIf="!i.result">Pending</span></td>
+                  <td><span class="badge" [ngClass]="inspStatusBadge(i.status)">{{ i.status }}</span></td>
+                </tr>
+                <tr *ngIf="inspections.length===0"><td colspan="5" class="empty-td">No inspections yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card"><div class="card-head"><div class="card-title">Open Defects</div><a class="see-all" (click)="showSection('defects')">View all →</a></div>
+            <div class="loading-row" *ngIf="defectsLoading">Loading…</div>
+            <table class="tbl" *ngIf="!defectsLoading"><thead><tr><th>ID</th><th>Description</th><th>Severity</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let d of defects.filter(x=>x.status==='Open'||x.status==='InReview').slice(0,5)">
+                  <td style="font-family:var(--mono);font-size:12px;color:var(--red)">DEF-{{ d.defectID }}</td>
+                  <td style="font-size:12px">{{ d.description | slice:0:40 }}{{ d.description.length>40?'…':'' }}</td>
+                  <td><span class="badge" [ngClass]="defectSeverityBadge(d.severity)" style="font-size:11px">{{ d.severity }}</span></td>
+                  <td><span class="badge" [ngClass]="defectStatusBadge(d.status)">{{ d.status }}</span></td>
+                </tr>
+                <tr *ngIf="openDefectsCount===0"><td colspan="4" class="empty-td">No open defects ✓</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- INSPECTIONS -->
+      <div *ngIf="activeSection==='inspections'">
+        <div class="page-header">
+          <div class="page-intro"><div class="page-title">Inspections</div><div class="page-sub">Create and manage quality inspections for work orders</div></div>
+          <button class="t-btn t-btn-primary" (click)="showInspectionModal=true; inspectionForm.reset()">+ Create Inspection</button>
+        </div>
+        <!-- Inspection Filters -->
+        <div class="filter-bar">
+          <select class="sel" [(ngModel)]="inspFilterResult" (change)="applyInspFilters()">
+            <option value="">All Results</option>
+            <option value="Pass">Pass</option>
+            <option value="Fail">Fail</option>
+            <option value="">Pending</option>
+          </select>
+          <select class="sel" [(ngModel)]="inspFilterStatus" (change)="applyInspFilters()">
+            <option value="">All Statuses</option>
+            <option value="Scheduled">Scheduled</option>
+            <option value="InProgress">In Progress</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+          <span style="font-size:12px;color:var(--muted)">{{ filteredInspections.length }} of {{ inspections.length }}</span>
+          <button class="t-btn" style="font-size:12px;padding:4px 10px" (click)="inspFilterResult=''; inspFilterStatus=''; applyInspFilters()">Clear</button>
+        </div>
+
+        <div class="card" style="margin-top:0">
+          <div class="loading-row" *ngIf="inspectionsLoading">Loading…</div>
+          <div class="error-row" *ngIf="!inspectionsLoading && inspectionsError">⚠ {{ inspectionsError }} <button class="retry-btn" (click)="loadInspections()">Retry</button></div>
+          <div *ngIf="!inspectionsLoading && !inspectionsError">
+            <table class="tbl" *ngIf="filteredInspections.length > 0">
+              <thead>
+                <tr>
+                  <th>Inspection ID</th>
+                  <th>Work Order ID</th>
+                  <th>Inspection Date</th>
+                  <th>Inspector ID</th>
+                  <th>Inspector Name</th>
+                  <th>Result</th>
+                  <th>Status</th>
+                  <th>Notes</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let insp of filteredInspections">
+                  <td style="font-family:var(--mono);font-size:12px;color:var(--accent)">INS-{{ insp.inspectionID }}</td>
+                  <td style="font-family:var(--mono);font-size:12px;color:var(--primary)">WO-{{ insp.workOrderID }}</td>
+                  <td style="font-size:12px;color:var(--muted)">{{ insp.inspectionDate | date:'dd MMM yyyy' }}</td>
+                  <td style="font-size:12px;color:var(--muted)">{{ insp.inspectorID }}</td>
+                  <td style="font-weight:500">{{ insp.inspectorName }}</td>
+                  <td>
+                    <span class="badge" [ngClass]="inspResultBadge(insp.result)" *ngIf="insp.result">{{ insp.result }}</span>
+                    <span style="font-size:11px;color:var(--muted2)" *ngIf="!insp.result">—</span>
+                  </td>
+                  <td><span class="badge" [ngClass]="inspStatusBadge(insp.status)">{{ insp.status }}</span></td>
+                  <td style="font-size:12px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ insp.notes || '—' }}</td>
+                  <td>
+                    <div class="action-btns">
+                      <button class="icon-btn" *ngIf="insp.status!=='Completed' && insp.status!=='Cancelled'" (click)="openUpdateResult(insp)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:12px;height:12px"><polyline points="20 6 9 17 4 12"/></svg>
+                        Set Result
+                      </button>
+                      <button class="icon-btn" style="color:var(--red);border-color:var(--red-border);background:var(--red-light)"
+                        *ngIf="insp.status!=='Cancelled'" (click)="openLogDefect(insp)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:12px;height:12px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        Log Defect
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="empty-row" *ngIf="filteredInspections.length===0">No inspections match the selected filters.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DEFECTS -->
+      <div *ngIf="activeSection==='defects'">
+        <div class="page-header">
+          <div class="page-intro"><div class="page-title">All Defects</div><div class="page-sub">Track and resolve quality defects across all inspections</div></div>
+          <button class="t-btn" (click)="loadDefects()">↻ Refresh</button>
+        </div>
+        <div class="summary-strip" style="grid-template-columns:repeat(4,1fr)">
+          <div class="sum-card"><div class="sum-accent" style="background:var(--red)"></div><div class="sum-label">Critical</div><div class="sum-val" style="color:var(--red)">{{ defects | severityCount:'Critical' }}</div></div>
+          <div class="sum-card"><div class="sum-accent" style="background:var(--amber)"></div><div class="sum-label">High</div><div class="sum-val">{{ defects | severityCount:'High' }}</div></div>
+          <div class="sum-card"><div class="sum-accent" style="background:var(--accent)"></div><div class="sum-label">Open</div><div class="sum-val">{{ openDefectsCount }}</div></div>
+          <div class="sum-card"><div class="sum-accent" style="background:var(--green)"></div><div class="sum-label">Resolved</div><div class="sum-val">{{ defects | statusCount:'Resolved' }}</div></div>
+        </div>
+
+        <!-- Defect Filters -->
+        <div class="filter-bar">
+          <select class="sel" [(ngModel)]="defectFilterSeverity" (change)="applyDefectFilters()">
+            <option value="">All Severities</option>
+            <option value="Critical">Critical</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+          <select class="sel" [(ngModel)]="defectFilterStatus" (change)="applyDefectFilters()">
+            <option value="">All Statuses</option>
+            <option value="Open">Open</option>
+            <option value="InReview">In Review</option>
+            <option value="Resolved">Resolved</option>
+            <option value="Closed">Closed</option>
+          </select>
+          <span style="font-size:12px;color:var(--muted)">{{ filteredDefects.length }} of {{ defects.length }}</span>
+          <button class="t-btn" style="font-size:12px;padding:4px 10px" (click)="defectFilterSeverity=''; defectFilterStatus=''; applyDefectFilters()">Clear</button>
+        </div>
+
+        <div class="card" style="margin-top:0">
+          <div class="loading-row" *ngIf="defectsLoading">Loading…</div>
+          <table class="tbl" *ngIf="!defectsLoading">
+            <thead><tr><th>ID</th><th>INS</th><th>Description</th><th>Severity</th><th>Status</th><th>Reported</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let d of filteredDefects">
+                <td style="font-family:var(--mono);font-size:12px;color:var(--red)">DEF-{{ d.defectID }}</td>
+                <td style="font-family:var(--mono);font-size:12px;color:var(--accent)">INS-{{ d.inspectionID }}</td>
+                <td style="font-size:12.5px;font-weight:500">{{ d.description }}</td>
+                <td><span class="badge" [ngClass]="defectSeverityBadge(d.severity)">{{ d.severity }}</span></td>
+                <td><span class="badge" [ngClass]="defectStatusBadge(d.status)">{{ d.status }}</span></td>
+                <td style="font-family:var(--mono);font-size:12px;color:var(--muted)">{{ d.createdDate | date:'dd MMM yy' }}</td>
+                <td>
+                  <div class="action-btns">
+                    <button class="icon-btn" *ngIf="d.status==='Open'" (click)="updateDefectStatus(d,'InReview')">In Review</button>
+                    <button class="icon-btn" style="color:var(--green);border-color:var(--green-border);background:var(--green-light)" *ngIf="d.status==='Open'||d.status==='InReview'" (click)="openResolve(d)">✓ Resolve</button>
+                    <button class="icon-btn" *ngIf="d.status==='Resolved'" (click)="updateDefectStatus(d,'Closed')">Close</button>
+                    <span style="font-size:11px;color:var(--muted)" *ngIf="d.status==='Closed'">Closed</span>
+                  </div>
+                </td>
+              </tr>
+              <tr *ngIf="filteredDefects.length===0"><td colspan="7" class="empty-td">{{ defects.length === 0 ? 'No defects logged yet.' : 'No defects match the selected filters.' }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- WORK ORDERS (view only) -->
+      <div *ngIf="activeSection==='workorders'">
+        <div class="page-header"><div class="page-intro"><div class="page-title">Work Orders</div><div class="page-sub">View work orders to plan inspections (read-only)</div></div><span class="readonly-badge">👁 View Only</span></div>
+        <div class="card">
+          <div class="loading-row" *ngIf="workOrdersLoading">Loading…</div>
+          <table class="tbl" *ngIf="!workOrdersLoading">
+            <thead><tr><th>WO</th><th>Product</th><th>Qty</th><th>Start</th><th>End</th><th>Status</th><th>Inspections</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let wo of workOrders">
+                <td style="font-family:var(--mono);font-size:12px;color:var(--accent)">WO-{{ wo.workOrderID }}</td>
+                <td style="font-weight:600">{{ wo.productName }}</td>
+                <td style="font-family:var(--mono)">{{ wo.quantity }}</td>
+                <td style="font-size:12px;color:var(--muted)">{{ wo.startDate | date:'dd MMM yy' }}</td>
+                <td style="font-size:12px" [style.color]="wo.isOverdue?'var(--red)':'var(--muted)'">{{ wo.endDate | date:'dd MMM yy' }}</td>
+                <td><span class="badge" [ngClass]="woStatusBadge(wo.status)">{{ wo.status }}</span></td>
+                <td style="font-size:12px;color:var(--muted)">{{ inspections | woInspCount:wo.workOrderID }}</td>
+              </tr>
+              <tr *ngIf="workOrders.length===0"><td colspan="7" class="empty-td">No work orders.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PRODUCTS & BOM (view only) -->
+      <div *ngIf="activeSection==='products'">
+        <div class="page-header"><div class="page-intro"><div class="page-title">Products &amp; BOM</div><div class="page-sub">View product details and material requirements relevant to quality inspections (read-only)</div></div><span class="readonly-badge">👁 View Only</span></div>
+        <div class="loading-row" *ngIf="productsLoading">Loading…</div>
+        <div class="card" *ngIf="!productsLoading">
+          <div *ngIf="products.length === 0" class="empty-td" style="padding:24px;text-align:center">No products found.</div>
+          <div class="bom-product-block" *ngFor="let p of products">
+            <div class="bom-prod-row" (click)="toggleBom(p.productID)">
+              <div class="bom-chevron">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                  [style.transform]="isBomExpanded(p.productID) ? 'rotate(90deg)' : 'rotate(0deg)'"
+                  style="transition:transform 0.2s;width:14px;height:14px"><polyline points="9 18 15 12 9 6"/></svg>
+              </div>
+              <div class="bom-prod-info">
+                <span class="bom-prod-name">{{ p.name }}</span>
+                <span class="bom-prod-meta">v{{ p.version }} · {{ p.category }}</span>
+              </div>
+              <span class="badge" [ngClass]="statusBadgeClass(p.status)">{{ p.status }}</span>
+              <span class="bom-comp-count" style="font-size:12px;color:var(--muted)">{{ (bomByProduct[p.productID]?.length || 0) }} BOM entries</span>
+              <span style="font-size:11px;color:var(--muted);margin-left:8px">{{ (inspections | woInspCount:p.productID) }} inspections</span>
+            </div>
+            <div *ngIf="isBomExpanded(p.productID)" class="bom-inline-panel">
+              <div *ngIf="!bomByProduct[p.productID]?.length" class="bom-inline-empty">No BOM entries defined for this product.</div>
+              <table class="tbl" *ngIf="bomByProduct[p.productID]?.length">
+                <thead><tr><th>#</th><th>Material</th><th>Type</th><th>Quantity</th><th>Unit</th><th>Notes</th></tr></thead>
+                <tbody>
+                  <tr *ngFor="let b of bomByProduct[p.productID]; let i=index">
+                    <td style="font-family:var(--mono);color:var(--muted);font-size:12px">{{ i+1 }}</td>
+                    <td style="font-weight:600">{{ b.componentName }}</td>
+                    <td><span class="badge" [ngClass]="materialTypeBadge(b.componentMaterialType)" style="font-size:11px">{{ b.componentMaterialType }}</span></td>
+                    <td style="font-family:var(--mono);font-size:15px;font-weight:700">{{ b.quantity }}</td>
+                    <td style="font-family:var(--mono);font-size:12px;color:var(--muted)">{{ b.componentUnit }}</td>
+                    <td style="font-size:12px;color:var(--muted);font-style:italic">{{ b.notes || '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANALYTICS (quality-specific) -->
+      <div *ngIf="activeSection==='analytics'">
+        <div class="page-header"><div class="page-intro"><div class="page-title">Analytics</div><div class="page-sub">Inspection results, defect breakdown and quality performance</div></div></div>
+
+        <!-- KPI stat cards -->
+        <div class="an-kpi-row">
+          <div class="an-kpi-card" style="--kc:var(--accent)">
+            <div class="an-kpi-accent"></div>
+            <div class="an-kpi-body">
+              <div class="an-kpi-label">TOTAL INSPECTIONS</div>
+              <div class="an-kpi-val">{{ inspections.length }}</div>
+              <div class="an-kpi-sub">{{ yieldRate }}% pass rate</div>
+            </div>
+            <svg class="an-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div class="an-kpi-card" style="--kc:#22c55e">
+            <div class="an-kpi-accent"></div>
+            <div class="an-kpi-body">
+              <div class="an-kpi-label">PASSED</div>
+              <div class="an-kpi-val">{{ passedCount }}</div>
+              <div class="an-kpi-sub">{{ failedCount }} failed</div>
+            </div>
+            <svg class="an-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="an-kpi-card" style="--kc:#ef4444">
+            <div class="an-kpi-accent"></div>
+            <div class="an-kpi-body">
+              <div class="an-kpi-label">OPEN DEFECTS</div>
+              <div class="an-kpi-val">{{ openDefectsCount }}</div>
+              <div class="an-kpi-sub">{{ criticalCount }} critical · {{ defects.length }} total</div>
+            </div>
+            <svg class="an-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+          </div>
+          <div class="an-kpi-card" style="--kc:#3b82f6">
+            <div class="an-kpi-accent"></div>
+            <div class="an-kpi-body">
+              <div class="an-kpi-label">INSPECTION COVERAGE</div>
+              <div class="an-kpi-val">{{ inspectionCoverage }}%</div>
+              <div class="an-kpi-sub">{{ completedWOsInspected }}/{{ completedWOsTotal }} completed WOs inspected</div>
+            </div>
+            <svg class="an-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="an-charts-row">
+
+          <!-- Inspection Results Doughnut -->
+          <div class="an-chart-card">
+            <div class="an-chart-head"><span class="an-chart-title">Inspection Results</span><span class="an-chart-sub">{{ inspections.length }} total</span></div>
+            <div class="an-donut-wrap">
+              <div class="an-donut-ring" [style.background]="inspDonutGradient()">
+                <div class="an-donut-center"><div class="an-donut-num">{{ inspections.length }}</div><div class="an-donut-lbl">INSP.</div></div>
+              </div>
+              <div class="an-donut-legend">
+                <div class="an-legend-row"><span class="an-legend-dot" style="background:#22c55e"></span><span class="an-legend-name">Passed</span><span class="an-legend-val">{{ passedCount }}</span><span class="an-legend-pct">{{ yieldRate }}%</span></div>
+                <div class="an-legend-row"><span class="an-legend-dot" style="background:#ef4444"></span><span class="an-legend-name">Failed</span><span class="an-legend-val">{{ failedCount }}</span><span class="an-legend-pct">{{ inspections.length ? (failedCount/inspections.length*100 | number:'1.0-0') : 0 }}%</span></div>
+                <div class="an-legend-row"><span class="an-legend-dot" style="background:#e5e7eb"></span><span class="an-legend-name">Pending</span><span class="an-legend-val">{{ pendingInspCount }}</span><span class="an-legend-pct">—</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Defect Severity Doughnut -->
+          <div class="an-chart-card">
+            <div class="an-chart-head"><span class="an-chart-title">Defect Severity</span><span class="an-chart-sub">{{ defects.length }} total</span></div>
+            <div class="an-donut-wrap">
+              <div class="an-donut-ring" [style.background]="defectSevGradient()">
+                <div class="an-donut-center"><div class="an-donut-num">{{ defects.length }}</div><div class="an-donut-lbl">DEFECTS</div></div>
+              </div>
+              <div class="an-donut-legend">
+                <div class="an-legend-row"><span class="an-legend-dot" style="background:#ef4444"></span><span class="an-legend-name">Critical</span><span class="an-legend-val">{{ criticalCount }}</span></div>
+                <div class="an-legend-row"><span class="an-legend-dot" style="background:#f97316"></span><span class="an-legend-name">High</span><span class="an-legend-val">{{ highCount }}</span></div>
+                <div class="an-legend-row"><span class="an-legend-dot" style="background:#f59e0b"></span><span class="an-legend-name">Medium</span><span class="an-legend-val">{{ mediumCount }}</span></div>
+                <div class="an-legend-row"><span class="an-legend-dot" style="background:#3b82f6"></span><span class="an-legend-name">Low</span><span class="an-legend-val">{{ lowCount }}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quality Health Gauges -->
+          <div class="an-chart-card">
+            <div class="an-chart-head"><span class="an-chart-title">Quality Health</span><span class="an-chart-sub">key rates</span></div>
+            <div class="an-gauges-wrap">
+              <div class="an-gauge">
+                <div class="an-gauge-ring" [style.background]="gaugeGradient(yieldRate)">
+                  <div class="an-gauge-inner">
+                    <div class="an-gauge-pct" [style.color]="gaugeColor(yieldRate)">{{ yieldRate }}%</div>
+                    <div class="an-gauge-lbl">PASS RATE</div>
+                  </div>
+                </div>
+                <div class="an-gauge-name">Inspection Pass</div>
+              </div>
+              <div class="an-gauge">
+                <div class="an-gauge-ring" [style.background]="gaugeGradient(inspectionCoverage)">
+                  <div class="an-gauge-inner">
+                    <div class="an-gauge-pct" [style.color]="gaugeColor(inspectionCoverage)">{{ inspectionCoverage }}%</div>
+                    <div class="an-gauge-lbl">COVERAGE</div>
+                  </div>
+                </div>
+                <div class="an-gauge-name">WO Coverage</div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /charts row 1 -->
+
+        <!-- Charts Row 2 -->
+        <div class="an-charts-row an-charts-row--2col">
+
+          <!-- Defect Pipeline bars -->
+          <div class="an-chart-card">
+            <div class="an-chart-head"><span class="an-chart-title">Defect Pipeline</span><span class="an-chart-sub">status breakdown</span></div>
+            <div class="an-funnel">
+              <div class="an-funnel-row"><div class="an-funnel-label">Open</div><div class="an-funnel-bar-wrap"><div class="an-funnel-bar" [style.width.%]="maxDefStatus ? (openDefectsCount/maxDefStatus*100) : 0" style="background:#ef4444"></div></div><div class="an-funnel-right"><div class="an-funnel-num">{{ openDefectsCount }}</div></div></div>
+              <div class="an-funnel-row"><div class="an-funnel-label">In Review</div><div class="an-funnel-bar-wrap"><div class="an-funnel-bar" [style.width.%]="maxDefStatus ? (inReviewDefectsCount/maxDefStatus*100) : 0" style="background:#f59e0b"></div></div><div class="an-funnel-right"><div class="an-funnel-num">{{ inReviewDefectsCount }}</div></div></div>
+              <div class="an-funnel-row"><div class="an-funnel-label">Resolved</div><div class="an-funnel-bar-wrap"><div class="an-funnel-bar" [style.width.%]="maxDefStatus ? (resolvedDefectsCount/maxDefStatus*100) : 0" style="background:#22c55e"></div></div><div class="an-funnel-right"><div class="an-funnel-num">{{ resolvedDefectsCount }}</div></div></div>
+            </div>
+          </div>
+
+          <!-- Defect Severity bars -->
+          <div class="an-chart-card">
+            <div class="an-chart-head"><span class="an-chart-title">Severity Breakdown</span><span class="an-chart-sub">{{ defects.length }} defects</span></div>
+            <div class="an-section-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="width:14px;height:14px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+              <span>Defects by Severity</span>
+              <span class="an-section-count">{{ defects.length }}</span>
+            </div>
+            <div class="an-bar-list">
+              <div class="an-bar-row"><div class="an-bar-label">Critical</div><div class="an-bar-track"><div class="an-bar-fill" [style.width.%]="maxDefSev ? (criticalCount/maxDefSev*100) : 0" style="background:#ef4444"></div></div><div class="an-bar-count">{{ criticalCount }}</div></div>
+              <div class="an-bar-row"><div class="an-bar-label">High</div><div class="an-bar-track"><div class="an-bar-fill" [style.width.%]="maxDefSev ? (highCount/maxDefSev*100) : 0" style="background:#f97316"></div></div><div class="an-bar-count">{{ highCount }}</div></div>
+              <div class="an-bar-row"><div class="an-bar-label">Medium</div><div class="an-bar-track"><div class="an-bar-fill" [style.width.%]="maxDefSev ? (mediumCount/maxDefSev*100) : 0" style="background:#f59e0b"></div></div><div class="an-bar-count">{{ mediumCount }}</div></div>
+              <div class="an-bar-row"><div class="an-bar-label">Low</div><div class="an-bar-track"><div class="an-bar-fill" [style.width.%]="maxDefSev ? (lowCount/maxDefSev*100) : 0" style="background:#3b82f6"></div></div><div class="an-bar-count">{{ lowCount }}</div></div>
+            </div>
+          </div>
+
+        </div><!-- /charts row 2 -->
+      </div>
+
+      <!-- NOTIFICATIONS -->
+      <div *ngIf="activeSection==='notifications'">
+        <div class="page-header"><div class="page-intro"><div class="page-title">My Notifications</div><div class="page-sub">{{ unreadCount > 0 ? unreadCount + ' unread' : 'All caught up!' }}</div></div><button class="t-btn" (click)="loadNotifications()">↻ Refresh</button></div>
+        <div class="card">
+          <div class="loading-row" *ngIf="notificationsLoading">Loading…</div>
+          <div *ngIf="!notificationsLoading">
+            <div class="notif-row" *ngFor="let n of notifications" [class.notif-unread]="n.status==='Unread'">
+              <div class="notif-icon" [class.unread]="n.status==='Unread'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:16px;height:16px"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+              <div class="notif-body">
+                <div style="font-weight:600;font-size:13px">{{ n.title }}</div>
+                <div style="font-size:12.5px;color:var(--text2);margin-top:2px">{{ n.message }}</div>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                  <span class="badge b-planner" style="font-size:10px">{{ n.category }}</span>
+                  <span class="badge" [ngClass]="notifPriorityBadge(n.priority)" style="font-size:10px">{{ n.priority }}</span>
+                  <span style="font-size:11px;color:var(--muted)">{{ n.createdDate | date:'dd MMM · h:mm a' }}</span>
+                </div>
+              </div>
+              <button class="icon-btn" *ngIf="n.status==='Unread'" (click)="markRead(n.notificationID)" style="flex-shrink:0">Mark Read</button>
+              <span class="badge b-active" *ngIf="n.status==='Read'" style="font-size:10px;flex-shrink:0">Read</span>
+            </div>
+            <div class="empty-row" *ngIf="notifications.length===0">No notifications.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

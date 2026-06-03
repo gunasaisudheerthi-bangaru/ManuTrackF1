@@ -56,6 +56,4 @@ public class ProductViewModel
     public string Version { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public DateTime CreatedDate { get; set; }
-    public DateTime? ModifiedDate { get; set; }
 }

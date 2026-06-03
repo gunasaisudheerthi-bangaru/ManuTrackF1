@@ -11,4 +11,7 @@ public interface IBomRepository
     Task<Bom> UpdateAsync(Bom bom);
     Task DeleteAsync(Bom bom);
     Task<bool> ExistsAsync(int id);
+    Task<int> CountForProductAsync(int productId);
+    Task DeleteAllForProductAsync(int productId);
+    Task<bool> HasBomsForComponentAsync(int componentId);
 }

@@ -14,11 +14,15 @@ public class LocationController(ILocationService service) : ControllerBase
     [HttpGet]
     public async Task<ActionResult<ApiResponse<IEnumerable<LocationViewModel>>>> GetAll(
         [FromQuery] bool? isActive)
-        => Ok(await service.GetAllAsync(isActive));
+    {
+        return Ok(await service.GetAllAsync(isActive));
+    }
 
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ApiResponse<LocationViewModel>>> GetById(int id)
-        => Ok(await service.GetByIdAsync(id));
+    {
+        return Ok(await service.GetByIdAsync(id));
+    }
 
     [HttpPost]
     [Authorize(Roles = "Admin,InventoryManager")]
@@ -33,10 +37,14 @@ public class LocationController(ILocationService service) : ControllerBase
     [Authorize(Roles = "Admin,InventoryManager")]
     public async Task<ActionResult<ApiResponse<LocationViewModel>>> Update(
         int id, [FromBody] UpdateLocationRequest request)
-        => Ok(await service.UpdateAsync(id, request));
+    {
+        return Ok(await service.UpdateAsync(id, request));
+    }
 
     [HttpDelete("{id:int}")]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<ApiResponse>> Delete(int id)
-        => Ok(await service.DeleteAsync(id));
+    {
+        return Ok(await service.DeleteAsync(id));
+    }
 }

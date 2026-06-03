@@ -101,12 +101,16 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // ── Dependency Injection ───────────────────────────────────────────────────
+builder.Services.AddHttpClient("ComplianceService", client =>
+    client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:ComplianceService"]!));
+builder.Services.AddScoped<AuditClient>();
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
 builder.Services.AddScoped<IAuthService, AuthServiceImpl>();
 
 var app = builder.Build();
 
 // ── Middleware Pipeline ────────────────────────────────────────────────────
+app.UseMiddleware<ManuTrack.SharedKernel.Middleware.ExceptionHandlingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseCors("AllowAll");
 app.UseAuthentication();

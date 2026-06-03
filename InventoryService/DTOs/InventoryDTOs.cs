@@ -2,16 +2,29 @@ using System.ComponentModel.DataAnnotations;
 
 namespace InventoryService.DTOs;
 
-public class CreateInventoryItemRequest
+public class CreateInventoryItemRequest : IValidatableObject
 {
-    [Required(ErrorMessage = "ProductID is required.")]
-    [Range(1, int.MaxValue, ErrorMessage = "ProductID must be a positive integer.")]
-    public int ProductID { get; set; }
+    [RegularExpression("^(Product|RawMaterial)$", ErrorMessage = "ItemType must be 'Product' or 'RawMaterial'.")]
+    public string ItemType { get; set; } = "Product";
 
-    [Required(ErrorMessage = "Product name is required.")]
-    [MinLength(2, ErrorMessage = "Product name must be at least 2 characters.")]
-    [MaxLength(200, ErrorMessage = "Product name cannot exceed 200 characters.")]
+    [Range(1, int.MaxValue, ErrorMessage = "ProductID must be a positive integer.")]
+    public int? ProductID { get; set; }
+
+    [Range(1, int.MaxValue, ErrorMessage = "ComponentID must be a positive integer.")]
+    public int? ComponentID { get; set; }
+
+    [Required(ErrorMessage = "Name is required.")]
+    [MinLength(2, ErrorMessage = "Name must be at least 2 characters.")]
+    [MaxLength(200, ErrorMessage = "Name cannot exceed 200 characters.")]
     public string ProductName { get; set; } = string.Empty;
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (ItemType == "Product" && (ProductID == null || ProductID <= 0))
+            yield return new ValidationResult("ProductID is required when ItemType is 'Product'.", [nameof(ProductID)]);
+        if (ItemType == "RawMaterial" && (ComponentID == null || ComponentID <= 0))
+            yield return new ValidationResult("ComponentID is required when ItemType is 'RawMaterial'.", [nameof(ComponentID)]);
+    }
 
     // Changed: nullable int FK to InventoryLocation
     [Range(1, int.MaxValue, ErrorMessage = "LocationID must be a positive integer.")]
@@ -59,7 +72,9 @@ public class AdjustQuantityRequest
 public class InventoryItemViewModel
 {
     public int InventoryID { get; set; }
-    public int ProductID { get; set; }
+    public string ItemType { get; set; } = "Product";
+    public int? ProductID { get; set; }
+    public int? ComponentID { get; set; }
     public string ProductName { get; set; } = string.Empty;
     // Changed: int? + LocationName from navigation property
     public int? LocationID { get; set; }
@@ -68,6 +83,4 @@ public class InventoryItemViewModel
     public decimal MinimumQuantity { get; set; }
     public string Status { get; set; } = string.Empty;
     public string? Notes { get; set; }
-    public DateTime CreatedDate { get; set; }
-    public DateTime? ModifiedDate { get; set; }
 }

@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Http;
 using WorkOrderService.Enums;
-using ManuTrack.SharedKernel.Exceptions;
 using ManuTrack.SharedKernel.Helpers;
 using ManuTrack.SharedKernel.Responses;
 using WorkOrderService.DTOs;
@@ -70,15 +69,16 @@ public class WorkOrderServiceImpl(
 
     public async Task<ApiResponse<WorkOrderViewModel>> GetByIdAsync(int id)
     {
-        var order = await repo.GetByIdWithTasksAsync(id)
-            ?? throw new NotFoundException($"WorkOrder {id} not found.");
+        var order = await repo.GetByIdWithTasksAsync(id);
+        if (order == null)
+            return ApiResponse<WorkOrderViewModel>.Fail($"WorkOrder {id} not found.");
         return ApiResponse<WorkOrderViewModel>.Ok(Map(order));
     }
 
     public async Task<ApiResponse<WorkOrderViewModel>> CreateAsync(CreateWorkOrderRequest request)
     {
         if (request.EndDate <= request.StartDate)
-            throw new ValidationException("EndDate must be after StartDate.");
+            return ApiResponse<WorkOrderViewModel>.Fail("EndDate must be after StartDate.");
 
         var workOrder = new WorkOrder
         {
@@ -87,14 +87,7 @@ public class WorkOrderServiceImpl(
             Quantity = request.Quantity,
             StartDate = request.StartDate,
             EndDate = request.EndDate,
-            EstimatedStartDate = request.EstimatedStartDate,
-            EstimatedEndDate = request.EstimatedEndDate,
-            AssignedTo = request.AssignedTo,
-            AssignedOperatorID = request.AssignedOperatorID,
-            CreatedBy = request.CreatedBy,
-            Notes = request.Notes,
-            Status = WorkOrderStatus.Pending,
-            CreatedDate = DateTime.UtcNow
+            Status = WorkOrderStatus.Pending
         };
 
         var created = await repo.CreateAsync(workOrder);
@@ -107,34 +100,28 @@ public class WorkOrderServiceImpl(
 
     public async Task<ApiResponse<WorkOrderViewModel>> UpdateAsync(int id, UpdateWorkOrderRequest request)
     {
-        var order = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"WorkOrder {id} not found.");
+        var order = await repo.GetByIdAsync(id);
+        if (order == null)
+            return ApiResponse<WorkOrderViewModel>.Fail($"WorkOrder {id} not found.");
 
-        if (request.Quantity.HasValue) order.Quantity = request.Quantity.Value;
-        if (request.StartDate.HasValue) order.StartDate = request.StartDate.Value;
-        if (request.EndDate.HasValue) order.EndDate = request.EndDate.Value;
-        if (request.EstimatedStartDate.HasValue) order.EstimatedStartDate = request.EstimatedStartDate.Value;
-        if (request.EstimatedEndDate.HasValue) order.EstimatedEndDate = request.EstimatedEndDate.Value;
-        if (request.AssignedTo != null) order.AssignedTo = request.AssignedTo;
-        if (request.AssignedOperatorID.HasValue) order.AssignedOperatorID = request.AssignedOperatorID.Value;
-        if (request.CreatedBy != null) order.CreatedBy = request.CreatedBy;
-        if (request.Notes != null) order.Notes = request.Notes;
-        order.ModifiedDate = DateTime.UtcNow;
+        // UpdateWorkOrderRequest is now empty — no fields to update directly
+        // Use UpdateStatus to change status
 
         var updated = await repo.UpdateAsync(order);
 
         await LogAuditAsync("Updated WorkOrder", "WorkOrder", id.ToString(),
-            $"Quantity: {updated.Quantity}, AssignedTo: {updated.AssignedTo}");
+            $"Quantity: {updated.Quantity}, Status: {updated.Status}");
 
         return ApiResponse<WorkOrderViewModel>.Ok(Map(updated), "Work order updated successfully.");
     }
 
     public async Task<ApiResponse<WorkOrderViewModel>> UpdateStatusAsync(int id, UpdateWorkOrderStatusRequest request)
     {
-        var order = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"WorkOrder {id} not found.");
+        var order = await repo.GetByIdAsync(id);
+        if (order == null)
+            return ApiResponse<WorkOrderViewModel>.Fail($"WorkOrder {id} not found.");
 
-        // block Completed if any tasks are still Pending or InProgress
+        // Block Completed if any tasks are still Pending or InProgress
         if (request.Status == WorkOrderStatus.Completed)
         {
             var tasks = await taskRepo.GetByWorkOrderIdAsync(id);
@@ -143,22 +130,12 @@ public class WorkOrderServiceImpl(
                 t.Status == WorkOrderTaskStatus.InProgress);
 
             if (incompleteTasks > 0)
-                throw new ValidationException(
-                    $"Cannot complete work order, {incompleteTasks} task(s) are still incomplete.");
-
-            // Change 7: block Completed if no passed inspection exists in QualityService
-            await ValidatePassedInspectionAsync(id);
+                return ApiResponse<WorkOrderViewModel>.Fail(
+                    $"Cannot complete work order — {incompleteTasks} task(s) are still incomplete.");
+            // Note: Quality inspection is handled separately by the QualityInspector role.
         }
 
-        // auto-set ActualStartDate / ActualEndDate on status transition
-        if (request.Status == WorkOrderStatus.InProgress && order.ActualStartDate == null)
-            order.ActualStartDate = DateTime.UtcNow;
-
-        if (request.Status == WorkOrderStatus.Completed)
-            order.ActualEndDate = DateTime.UtcNow;
-
         order.Status = request.Status;
-        order.ModifiedDate = DateTime.UtcNow;
 
         var updated = await repo.UpdateAsync(order);
 
@@ -176,8 +153,9 @@ public class WorkOrderServiceImpl(
 
     public async Task<ApiResponse> DeleteAsync(int id)
     {
-        var order = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"WorkOrder {id} not found.");
+        var order = await repo.GetByIdAsync(id);
+        if (order == null)
+            return ApiResponse.Fail($"WorkOrder {id} not found.");
 
         await repo.DeleteAsync(order);
 
@@ -188,32 +166,36 @@ public class WorkOrderServiceImpl(
     }
 
     // ── Change 7: Validate passed inspection before Completed ────────────────
-    private async Task ValidatePassedInspectionAsync(int workOrderId)
+    // Returns null if OK, error message string if validation fails
+    private async Task<string?> GetInspectionValidationErrorAsync(int workOrderId)
     {
         try
         {
             var client = ServiceHelper.CreateAuthorizedClient(httpClientFactory, httpContextAccessor, "QualityService");
             var response = await client.GetAsync($"api/v1/inspections?workOrderId={workOrderId}");
-            if (!response.IsSuccessStatusCode) return; // QualityService unavailable — allow through
+            if (!response.IsSuccessStatusCode) return null; // QualityService unavailable — allow through
 
             var result = await response.Content
                 .ReadFromJsonAsync<InspectionListResponseDto>(
                     new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
             var inspections = result?.Data;
-            if (inspections == null) return;
+            if (inspections == null) return null;
 
             var hasPassedInspection = inspections.Any(i =>
                 i.Result?.Equals("Pass", StringComparison.OrdinalIgnoreCase) == true &&
                 i.Status?.Equals("Completed", StringComparison.OrdinalIgnoreCase) == true);
 
             if (!hasPassedInspection)
-                throw new ValidationException(
-                    "Work order cannot be completed without a passed inspection. " +
-                    "Please complete quality inspection first.");
+                return "Work order cannot be completed without a passed inspection. Please complete quality inspection first.";
+
+            return null;
         }
-        catch (ValidationException) { throw; }
-        catch (Exception ex) { logger.LogWarning(ex, "QualityService unavailable during inspection validation for WO {WorkOrderId}. Allowing through.", workOrderId); }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "QualityService unavailable during inspection validation for WO {WorkOrderId}. Allowing through.", workOrderId);
+            return null; // Allow through if quality service is down
+        }
     }
 
     // ── Local DTOs for QualityService response ────────────────────────────────
@@ -232,15 +214,6 @@ public class WorkOrderServiceImpl(
 
     private static WorkOrderViewModel Map(WorkOrder w)
     {
-        var totalTasks = w.Tasks.Count;
-        var completedTasks = w.Tasks.Count(t => t.Status == WorkOrderTaskStatus.Completed);
-        var progress = totalTasks == 0 ? 0m : Math.Round((decimal)completedTasks / totalTasks * 100, 1);
-
-        var isOverdue = w.EstimatedEndDate.HasValue
-            && w.EstimatedEndDate.Value < DateTime.UtcNow
-            && w.Status != WorkOrderStatus.Completed
-            && w.Status != WorkOrderStatus.Cancelled;
-
         return new WorkOrderViewModel
         {
             WorkOrderID = w.WorkOrderID,
@@ -249,20 +222,8 @@ public class WorkOrderServiceImpl(
             Quantity = w.Quantity,
             StartDate = w.StartDate,
             EndDate = w.EndDate,
-            EstimatedStartDate = w.EstimatedStartDate,
-            EstimatedEndDate = w.EstimatedEndDate,
-            ActualStartDate = w.ActualStartDate,
-            ActualEndDate = w.ActualEndDate,
             Status = w.Status,
-            AssignedTo = w.AssignedTo,
-            AssignedOperatorID = w.AssignedOperatorID,
-            CreatedBy = w.CreatedBy,
-            Notes = w.Notes,
-            CreatedDate = w.CreatedDate,
-            ModifiedDate = w.ModifiedDate,
-            TaskCount = totalTasks,
-            ProgressPercentage = progress,
-            IsOverdue = isOverdue
+            TaskCount = w.Tasks.Count
         };
     }
 }

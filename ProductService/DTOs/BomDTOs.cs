@@ -52,9 +52,10 @@ public class BomViewModel
     public string ProductName { get; set; } = string.Empty;
     public int ComponentID { get; set; }
     public string ComponentName { get; set; } = string.Empty;
+    public string ComponentUnit { get; set; } = string.Empty;
+    public string ComponentMaterialType { get; set; } = string.Empty;
     public decimal Quantity { get; set; }
     public string Version { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public string? Notes { get; set; }
-    public DateTime CreatedDate { get; set; }
 }

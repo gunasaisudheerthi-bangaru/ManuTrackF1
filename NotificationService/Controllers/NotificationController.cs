@@ -20,7 +20,6 @@ public class NotificationController(INotificationService service) : ControllerBa
         return Ok(await service.GetForUserAsync(userId, status, category));
     }
 
-    // Change 4: returns UnreadCountViewModel (total + byCategory breakdown)
     [HttpGet("my/unread-count")]
     public async Task<ActionResult<ApiResponse<UnreadCountViewModel>>> GetUnreadCount()
     {
@@ -32,13 +31,16 @@ public class NotificationController(INotificationService service) : ControllerBa
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<ApiResponse<IEnumerable<NotificationViewModel>>>> GetAll(
         [FromQuery] string? category, [FromQuery] string? status)
-        => Ok(await service.GetAllAsync(category, status));
+    {
+        return Ok(await service.GetAllAsync(category, status));
+    }
 
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ApiResponse<NotificationViewModel>>> GetById(int id)
-        => Ok(await service.GetByIdAsync(id));
+    {
+        return Ok(await service.GetByIdAsync(id));
+    }
 
-    // Change 2: returns 201 Created with full details
     [HttpPost]
     [Authorize(Roles = "Admin,Planner,InventoryManager")]
     public async Task<ActionResult<ApiResponse<NotificationViewModel>>> Send(
@@ -52,11 +54,15 @@ public class NotificationController(INotificationService service) : ControllerBa
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<ApiResponse<IEnumerable<NotificationViewModel>>>> Broadcast(
         [FromBody] BroadcastNotificationRequest request)
-        => Ok(await service.BroadcastAsync(request));
+    {
+        return Ok(await service.BroadcastAsync(request));
+    }
 
     [HttpPut("{id:int}/read")]
     public async Task<ActionResult<ApiResponse<NotificationViewModel>>> MarkRead(int id)
-        => Ok(await service.MarkAsReadAsync(id));
+    {
+        return Ok(await service.MarkAsReadAsync(id));
+    }
 
     [HttpPut("my/read-all")]
     public async Task<ActionResult<ApiResponse>> MarkAllRead()
@@ -65,7 +71,6 @@ public class NotificationController(INotificationService service) : ControllerBa
         return Ok(await service.MarkAllAsReadAsync(userId));
     }
 
-    // Change 7: delete all read notifications for the current user
     [HttpDelete("my/read")]
     public async Task<ActionResult<ApiResponse>> DeleteMyRead()
     {
@@ -73,9 +78,10 @@ public class NotificationController(INotificationService service) : ControllerBa
         return Ok(await service.DeleteReadNotificationsAsync(userId));
     }
 
-    // Change 7: admin cleanup — delete notifications older than 90 days
     [HttpDelete("cleanup")]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<ApiResponse>> Cleanup()
-        => Ok(await service.CleanupOldNotificationsAsync());
+    {
+        return Ok(await service.CleanupOldNotificationsAsync());
+    }
 }

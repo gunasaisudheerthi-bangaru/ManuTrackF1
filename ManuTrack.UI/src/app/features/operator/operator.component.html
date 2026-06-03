@@ -1,0 +1,359 @@
+<!-- INLINE PAGE NOTIFICATION -->
+<ng-container *ngIf="toastMsg || errorAlert">
+  <div class="page-notification" [class.notif-success]="!!toastMsg" [class.notif-error]="!!errorAlert">
+    <div class="notif-icon-wrap">
+      <svg *ngIf="toastMsg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+      <svg *ngIf="errorAlert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </div>
+    <span class="notif-text">{{ toastMsg || errorAlert }}</span>
+    <button class="notif-close" (click)="toastMsg=''; errorAlert=''">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+</ng-container>
+
+<div class="shell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-row">
+        <div class="logo-sq">MT</div>
+        <div><div class="logo-name">ManuTrack</div><div class="logo-tag">Operator</div></div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-group">
+        <div class="nav-group-label">My Work</div>
+        <a class="nav-item" [class.active]="activeSection==='overview'" (click)="showSection('overview')">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Overview
+        </a>
+        <a class="nav-item" [class.active]="activeSection==='tasks'" (click)="showSection('tasks')">
+          <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Work Orders &amp; Tasks
+          <span class="nav-badge" *ngIf="pendingTasksCount > 0">{{ pendingTasksCount }}</span>
+        </a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">View</div>
+        <a class="nav-item" [class.active]="activeSection==='products'" (click)="showSection('products')">
+          <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          Products &amp; BOM
+        </a>
+        <a class="nav-item" [class.active]="activeSection==='notifications'" (click)="showSection('notifications')">
+          <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Notifications
+          <span class="nav-badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+        </a>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row" (click)="logout()">
+        <div class="av">{{ userInitials }}</div>
+        <div style="flex:1"><div class="u-name">{{ userName }}</div><div class="u-role">Operator</div></div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <header class="topbar">
+      <div class="breadcrumb">
+        <span class="breadcrumb-home">ManuTrack</span>
+        <span class="breadcrumb-sep">›</span>
+        <span class="breadcrumb-current">{{ sectionTitle }}</span>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-user">
+          <div class="topbar-av">{{ userInitials }}</div>
+          <div><div class="topbar-name">{{ userName }}</div><div class="topbar-role">Operator</div></div>
+        </div>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- ===== OVERVIEW ===== -->
+      <div *ngIf="activeSection==='overview'">
+        <div class="page-header">
+          <div class="page-intro">
+            <div class="page-title">Operator Overview</div>
+            <div class="page-sub">View your assigned tasks and monitor production progress</div>
+          </div>
+        </div>
+
+        <div class="summary-strip" style="grid-template-columns:repeat(4,1fr)">
+          <div class="sum-card" (click)="showSection('tasks')" style="cursor:pointer">
+            <div class="sum-accent" style="background:var(--accent)"></div>
+            <div class="sum-label">My Work Orders</div><div class="sum-val">{{ myWorkOrders.length }}</div>
+            <div class="sum-desc">{{ myInProgressTasksCount > 0 ? myInProgressTasksCount + ' task(s) in progress' : 'No active tasks' }}</div>
+          </div>
+          <div class="sum-card" (click)="showSection('tasks')" style="cursor:pointer">
+            <div class="sum-accent" style="background:var(--amber)"></div>
+            <div class="sum-label">Pending Tasks</div><div class="sum-val">{{ pendingTasksCount }}</div>
+            <div class="sum-desc" style="color:var(--amber)" *ngIf="pendingTasksCount > 0">Action needed</div>
+          </div>
+          <div class="sum-card" (click)="showSection('tasks')" style="cursor:pointer">
+            <div class="sum-accent" style="background:#22c55e"></div>
+            <div class="sum-label">Completed Tasks</div><div class="sum-val">{{ myCompletedTasksCount }}</div>
+            <div class="sum-desc">Great progress!</div>
+          </div>
+          <div class="sum-card" (click)="showSection('notifications')" style="cursor:pointer">
+            <div class="sum-accent" style="background:var(--accent)"></div>
+            <div class="sum-label">Unread Notifications</div><div class="sum-val">{{ unreadCount }}</div>
+            <div class="sum-desc" *ngIf="unreadCount > 0" style="color:var(--accent)">Tap to view</div>
+          </div>
+        </div>
+
+        <!-- My Work Orders + Tasks -->
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">My Work Orders</div>
+              <a class="see-all" (click)="showSection('tasks')">Manage →</a>
+            </div>
+            <div class="loading-row" *ngIf="workOrdersLoading">Loading…</div>
+            <table class="tbl" *ngIf="!workOrdersLoading">
+              <thead><tr><th>WO</th><th>Product</th><th>Qty</th><th>Due</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let wo of myWorkOrders.slice(0,6)">
+                  <td style="font-family:var(--mono);font-size:12px;color:var(--accent)">WO-{{ wo.workOrderID }}</td>
+                  <td style="font-weight:600">{{ wo.productName }}</td>
+                  <td style="font-family:var(--mono)">{{ wo.quantity }}</td>
+                  <td style="font-size:12px" [style.color]="wo.isOverdue ? 'var(--red)' : 'var(--muted)'">{{ wo.endDate | date:'dd MMM yy' }}</td>
+                  <td><span class="badge" [ngClass]="woStatusBadge(wo.status)">{{ wo.status }}</span></td>
+                </tr>
+                <tr *ngIf="myWorkOrders.length===0"><td colspan="5" class="empty-td">No work orders assigned to you.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- My pending tasks quick view -->
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">My Tasks</div>
+              <a class="see-all" (click)="showSection('tasks')">View all →</a>
+            </div>
+            <div class="loading-row" *ngIf="workOrdersLoading">Loading…</div>
+            <div *ngIf="!workOrdersLoading" style="padding:8px 0">
+              <ng-container *ngFor="let wo of myWorkOrders.slice(0,4)">
+                <ng-container *ngFor="let t of (tasksByWorkOrder[wo.workOrderID] || [])">
+                  <div *ngIf="isMyTask(t) && t.status !== 'Completed'" style="display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--border)">
+                    <span class="badge" [ngClass]="taskStatusBadge(t.status)" style="flex-shrink:0">{{ t.status }}</span>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.description }}</div>
+                      <div style="font-size:11px;color:var(--muted)">WO-{{ wo.workOrderID }} · {{ wo.productName }}</div>
+                    </div>
+                  </div>
+                </ng-container>
+              </ng-container>
+              <div class="empty-td" *ngIf="pendingTasksCount === 0" style="padding:20px;text-align:center">All tasks completed! 🎉</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== WORK ORDERS & TASKS ===== -->
+      <div *ngIf="activeSection==='tasks'">
+        <div class="page-header">
+          <div class="page-intro">
+            <div class="page-title">Work Orders &amp; Tasks</div>
+            <div class="page-sub">View work orders and update your task status. You can mark tasks as InProgress or Completed.</div>
+          </div>
+          <button class="t-btn" (click)="loadWorkOrders()">↻ Refresh</button>
+        </div>
+
+        <div class="summary-strip" style="grid-template-columns:repeat(3,1fr)">
+          <div class="sum-card"><div class="sum-accent" style="background:var(--accent)"></div><div class="sum-label">My Work Orders</div><div class="sum-val">{{ myWorkOrders.length }}</div></div>
+          <div class="sum-card"><div class="sum-accent" style="background:var(--green)"></div><div class="sum-label">In Progress</div><div class="sum-val">{{ myWorkOrders | woCount:'InProgress' }}</div></div>
+          <div class="sum-card"><div class="sum-accent" style="background:var(--amber)"></div><div class="sum-label">My Pending Tasks</div><div class="sum-val">{{ pendingTasksCount }}</div></div>
+        </div>
+
+        <div class="card">
+          <div class="loading-row" *ngIf="workOrdersLoading">Loading…</div>
+          <div class="error-row" *ngIf="!workOrdersLoading && workOrdersError">⚠ {{ workOrdersError }} <button class="retry-btn" (click)="loadWorkOrders()">Retry</button></div>
+          <div *ngIf="!workOrdersLoading && !workOrdersError">
+            <div class="loading-row" *ngIf="workOrdersLoading">Loading…</div>
+            <div class="wo-block" *ngFor="let wo of myWorkOrders">
+              <div class="wo-row" (click)="toggleWorkOrder(wo.workOrderID)">
+                <div class="wo-chevron">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                    [style.transform]="isWorkOrderExpanded(wo.workOrderID) ? 'rotate(90deg)' : 'rotate(0deg)'"
+                    style="transition:transform 0.2s;width:14px;height:14px"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+                <div class="wo-id">WO-{{ wo.workOrderID }}</div>
+                <div class="wo-main">
+                  <span class="wo-product">{{ wo.productName }}</span>
+                  <span class="wo-meta">Qty: {{ wo.quantity }} · {{ wo.startDate | date:'dd MMM' }} → {{ wo.endDate | date:'dd MMM yy' }}</span>
+                </div>
+                <span class="badge" [ngClass]="woStatusBadge(wo.status)">{{ wo.status }}</span>
+                <span class="wo-task-count">{{ (tasksByWorkOrder[wo.workOrderID] || []).length }} task{{ (tasksByWorkOrder[wo.workOrderID] || []).length !== 1 ? 's' : '' }}</span>
+              </div>
+
+              <!-- Tasks (operator can only update status) -->
+              <div class="wo-tasks-panel" *ngIf="isWorkOrderExpanded(wo.workOrderID)">
+                <div class="wo-tasks-header">
+                  <span style="font-size:13px;font-weight:600">Tasks for WO-{{ wo.workOrderID }}</span>
+                  <span class="op-hint">You can update task status to InProgress or Completed</span>
+                </div>
+                <div class="wo-tasks-empty" *ngIf="!(tasksByWorkOrder[wo.workOrderID]?.length)">No tasks assigned to this work order yet.</div>
+                <div class="op-task-list" *ngIf="tasksByWorkOrder[wo.workOrderID]?.length">
+                  <div class="op-task-item" *ngFor="let t of tasksByWorkOrder[wo.workOrderID]">
+                    <div class="op-task-num">{{ (tasksByWorkOrder[wo.workOrderID].indexOf(t) + 1) }}</div>
+                    <div class="op-task-body">
+                      <div class="op-task-desc">{{ t.description }}</div>
+                      <div class="op-task-assignee">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:12px;height:12px"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                        {{ t.assignedTo }}
+                      </div>
+                    </div>
+                    <div class="op-task-actions">
+                      <span class="badge" [ngClass]="taskStatusBadge(t.status)" style="margin-right:8px">{{ t.status }}</span>
+
+                      <!-- Actions only for tasks assigned to this operator on active WOs -->
+                      <ng-container *ngIf="isMyTask(t) && wo.status !== 'Completed' && wo.status !== 'Cancelled'">
+                        <button class="op-status-btn pending" *ngIf="t.status==='Pending'" (click)="updateTaskStatus(t,'InProgress')">
+                          ▶ Start Task
+                        </button>
+                        <button class="op-status-btn complete" *ngIf="t.status==='InProgress'" (click)="updateTaskStatus(t,'Completed')">
+                          ✓ Complete
+                        </button>
+                        <span class="op-done-badge" *ngIf="t.status==='Completed'">✓ Done</span>
+                      </ng-container>
+
+                      <!-- Completed WO — all tasks locked -->
+                      <ng-container *ngIf="isMyTask(t) && (wo.status === 'Completed' || wo.status === 'Cancelled')">
+                        <span class="op-done-badge" *ngIf="t.status==='Completed'">✓ Done</span>
+                        <span style="font-size:11px;color:var(--muted);font-style:italic" *ngIf="t.status!=='Completed'">🔒 WO {{ wo.status }}</span>
+                      </ng-container>
+
+                      <!-- Other operator's task — view only -->
+                      <span class="op-other-badge" *ngIf="!isMyTask(t)">Assigned to {{ t.assignedTo }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="empty-row" *ngIf="!workOrdersLoading && myWorkOrders.length===0">
+              <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/></svg>
+              No work orders assigned to you yet.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PRODUCTS & BOM (filtered to operator's WOs) ===== -->
+      <div *ngIf="activeSection==='products'">
+        <div class="page-header">
+          <div class="page-intro">
+            <div class="page-title">Products &amp; Bill of Materials</div>
+            <div class="page-sub">Products and BOM components for your assigned work orders (read-only)</div>
+          </div>
+          <span class="readonly-badge">👁 View Only</span>
+        </div>
+
+        <!-- Info banner if no WOs assigned -->
+        <div *ngIf="myWorkOrders.length === 0" class="low-stock-alert" style="margin-bottom:16px;background:var(--accent-light);border-color:var(--accent)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" style="width:18px;height:18px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span style="color:var(--accent)">No work orders are assigned to you yet. Products will appear here once a Planner assigns you tasks.</span>
+        </div>
+
+        <div class="loading-row" *ngIf="productsLoading">Loading…</div>
+        <div *ngIf="!productsLoading && myWorkOrders.length > 0">
+
+          <!-- Show one card per assigned WO with its product + BOM -->
+          <div *ngFor="let wo of myWorkOrders" style="margin-bottom:16px">
+            <!-- WO context header -->
+            <div class="card" style="margin-bottom:0;border-radius:var(--radius) var(--radius) 0 0;border-bottom:0;background:var(--surface2);padding:10px 18px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:700">WO-{{ wo.workOrderID }}</span>
+                <span style="font-size:13px;font-weight:600;color:var(--text)">{{ wo.productName }}</span>
+                <span class="badge" [ngClass]="woStatusBadge(wo.status)" style="margin-left:auto">{{ wo.status }}</span>
+                <span style="font-size:11px;color:var(--muted)">Qty: {{ wo.quantity }}</span>
+              </div>
+            </div>
+
+            <!-- Product + BOM card -->
+            <div class="card" style="border-radius:0 0 var(--radius) var(--radius)">
+              <ng-container *ngFor="let p of myProducts">
+                <ng-container *ngIf="p.productID === wo.productID">
+                  <!-- Product details -->
+                  <div style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border)">
+                    <div style="flex:1">
+                      <div style="font-size:15px;font-weight:700;color:var(--text)">{{ p.name }}</div>
+                      <div style="font-size:12px;color:var(--muted);margin-top:2px">v{{ p.version }} · {{ p.category }}</div>
+                    </div>
+                    <span class="badge" [ngClass]="statusBadgeClass(p.status)">{{ p.status }}</span>
+                    <span style="font-size:12px;color:var(--muted)">{{ (bomByProduct[p.productID]?.length || 0) }} BOM component(s)</span>
+                  </div>
+
+                  <!-- BOM table -->
+                  <div *ngIf="bomByProduct[p.productID]?.length; else noBom">
+                    <table class="tbl">
+                      <thead><tr><th>#</th><th>Material / Component</th><th>Type</th><th>Quantity Required</th><th>Unit</th><th>Notes</th></tr></thead>
+                      <tbody>
+                        <tr *ngFor="let b of bomByProduct[p.productID]; let i=index">
+                          <td style="font-family:var(--mono);color:var(--muted);font-size:12px">{{ i+1 }}</td>
+                          <td style="font-weight:600">{{ b.componentName }}</td>
+                          <td><span class="badge" [ngClass]="materialTypeBadge(b.componentMaterialType)" style="font-size:11px">{{ b.componentMaterialType }}</span></td>
+                          <td style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text)">{{ b.quantity }}</td>
+                          <td style="font-family:var(--mono);font-size:12px;color:var(--muted)">{{ b.componentUnit }}</td>
+                          <td style="font-size:12px;color:var(--muted);font-style:italic">{{ b.notes || '—' }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <ng-template #noBom>
+                    <div class="empty-td" style="padding:20px;text-align:center;color:var(--muted)">No BOM defined for this product yet.</div>
+                  </ng-template>
+                </ng-container>
+              </ng-container>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ===== NOTIFICATIONS (own only) ===== -->
+      <div *ngIf="activeSection==='notifications'">
+        <div class="page-header">
+          <div class="page-intro">
+            <div class="page-title">My Notifications</div>
+            <div class="page-sub">{{ unreadCount > 0 ? unreadCount + ' unread' : 'All caught up!' }}</div>
+          </div>
+          <button class="t-btn" (click)="loadNotifications()">↻ Refresh</button>
+        </div>
+        <div class="card">
+          <div class="loading-row" *ngIf="notificationsLoading">Loading…</div>
+          <div *ngIf="!notificationsLoading">
+            <div class="notif-row" *ngFor="let n of notifications" [class.notif-unread]="n.status==='Unread'">
+              <div class="notif-icon" [class.unread]="n.status==='Unread'">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:16px;height:16px"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              </div>
+              <div class="notif-body">
+                <div style="font-weight:600;font-size:13px">{{ n.title }}</div>
+                <div style="font-size:12.5px;color:var(--text2);margin-top:2px">{{ n.message }}</div>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                  <span class="badge b-planner" style="font-size:10px">{{ n.category }}</span>
+                  <span class="badge" [ngClass]="notifPriorityBadge(n.priority)" style="font-size:10px">{{ n.priority }}</span>
+                  <span style="font-size:11px;color:var(--muted)">{{ n.createdDate | date:'dd MMM · h:mm a' }}</span>
+                </div>
+              </div>
+              <button class="icon-btn" *ngIf="n.status==='Unread'" (click)="markRead(n.notificationID)" style="flex-shrink:0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:13px;height:13px"><polyline points="20 6 9 17 4 12"/></svg>
+                Mark Read
+              </button>
+              <span class="badge b-active" *ngIf="n.status==='Read'" style="font-size:10px;flex-shrink:0">Read</span>
+            </div>
+            <div class="empty-row" *ngIf="notifications.length===0">
+              <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
+              No notifications.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /shell -->

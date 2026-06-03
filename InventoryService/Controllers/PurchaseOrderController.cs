@@ -13,22 +13,37 @@ public class PurchaseOrderController(IPurchaseOrderService service) : Controller
 {
     [HttpGet]
     public async Task<ActionResult<ApiResponse<IEnumerable<PurchaseOrderViewModel>>>> GetAll([FromQuery] string? status)
-        => Ok(await service.GetAllAsync(status));
+    {
+        return Ok(await service.GetAllAsync(status));
+    }
 
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ApiResponse<PurchaseOrderViewModel>>> GetById(int id)
-        => Ok(await service.GetByIdAsync(id));
+    {
+        var result = await service.GetByIdAsync(id);
+        if (!result.Success) return NotFound(result);
+        return Ok(result);
+    }
 
     [HttpPost]
     [Authorize(Roles = "Admin,InventoryManager")]
     public async Task<ActionResult<ApiResponse<PurchaseOrderViewModel>>> Create([FromBody] CreatePurchaseOrderRequest request)
     {
         var result = await service.CreateAsync(request);
+        if (!result.Success) return BadRequest(result);
         return CreatedAtAction(nameof(GetById), new { id = result.Data!.POID }, result);
     }
 
     [HttpPut("{id:int}/status")]
     [Authorize(Roles = "Admin,InventoryManager")]
     public async Task<ActionResult<ApiResponse<PurchaseOrderViewModel>>> UpdateStatus(int id, [FromBody] UpdatePurchaseOrderStatusRequest request)
-        => Ok(await service.UpdateStatusAsync(id, request));
+    {
+        // Only Admin can approve a PO
+        if (request.Status == "Approved" && !User.IsInRole("Admin"))
+            return StatusCode(403, ApiResponse.Fail("Only Admin can approve purchase orders."));
+
+        var result = await service.UpdateStatusAsync(id, request);
+        if (!result.Success) return BadRequest(result);
+        return Ok(result);
+    }
 }

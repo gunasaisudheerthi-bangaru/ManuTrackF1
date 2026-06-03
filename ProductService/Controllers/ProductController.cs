@@ -24,6 +24,7 @@ public class ProductController(IProductService service) : ControllerBase
     public async Task<ActionResult<ApiResponse<ProductViewModel>>> GetById(int id)
     {
         var result = await service.GetProductByIdAsync(id);
+        if (!result.Success) return NotFound(result);
         return Ok(result);
     }
 
@@ -32,6 +33,7 @@ public class ProductController(IProductService service) : ControllerBase
     public async Task<ActionResult<ApiResponse<ProductViewModel>>> Create([FromBody] CreateProductRequest request)
     {
         var result = await service.CreateProductAsync(request);
+        if (!result.Success) return Conflict(result);
         return CreatedAtAction(nameof(GetById), new { id = result.Data!.ProductID }, result);
     }
 
@@ -40,6 +42,7 @@ public class ProductController(IProductService service) : ControllerBase
     public async Task<ActionResult<ApiResponse<ProductViewModel>>> Update(int id, [FromBody] UpdateProductRequest request)
     {
         var result = await service.UpdateProductAsync(id, request);
+        if (!result.Success) return NotFound(result);
         return Ok(result);
     }
 
@@ -48,6 +51,7 @@ public class ProductController(IProductService service) : ControllerBase
     public async Task<ActionResult<ApiResponse<ProductViewModel>>> UpdateStatus(int id, [FromBody] UpdateProductStatusRequest request)
     {
         var result = await service.UpdateProductStatusAsync(id, request);
+        if (!result.Success) return NotFound(result);
         return Ok(result);
     }
 
@@ -56,6 +60,7 @@ public class ProductController(IProductService service) : ControllerBase
     public async Task<ActionResult<ApiResponse>> Delete(int id)
     {
         var result = await service.DeleteProductAsync(id);
+        if (!result.Success) return NotFound(result);
         return Ok(result);
     }
 }

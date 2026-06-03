@@ -1,0 +1,28 @@
+/* Global base styles */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+/* Prevent horizontal overflow on mobile */
+body { overflow-x: hidden; }
+
+img, svg { max-width: 100%; }
+
+/* Responsive tables */
+table { border-collapse: collapse; }
+
+/* Touch-friendly tap targets */
+@media (max-width: 768px) {
+  button, a, select, input {
+    min-height: 36px;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: unset;
+  }
+}

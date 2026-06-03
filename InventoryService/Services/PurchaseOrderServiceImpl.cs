@@ -5,7 +5,6 @@ using InventoryService.Enums;
 using InventoryService.Models;
 using InventoryService.Repositories.Interfaces;
 using InventoryService.Services.Interfaces;
-using ManuTrack.SharedKernel.Exceptions;
 using ManuTrack.SharedKernel.Helpers;
 using ManuTrack.SharedKernel.Responses;
 
@@ -59,8 +58,9 @@ public class PurchaseOrderServiceImpl(
 
     public async Task<ApiResponse<PurchaseOrderViewModel>> GetByIdAsync(int id)
     {
-        var po = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Purchase order {id} not found.");
+        var po = await repo.GetByIdAsync(id);
+        if (po == null)
+            return ApiResponse<PurchaseOrderViewModel>.Fail($"Purchase order {id} not found.");
         return ApiResponse<PurchaseOrderViewModel>.Ok(Map(po));
     }
 
@@ -72,10 +72,11 @@ public class PurchaseOrderServiceImpl(
         // Validate SupplierRefID if provided
         if (request.SupplierRefID.HasValue)
         {
-            var supplier = await supplierRepo.GetByIdAsync(request.SupplierRefID.Value)
-                ?? throw new NotFoundException($"Supplier {request.SupplierRefID.Value} not found.");
+            var supplier = await supplierRepo.GetByIdAsync(request.SupplierRefID.Value);
+            if (supplier == null)
+                return ApiResponse<PurchaseOrderViewModel>.Fail($"Supplier {request.SupplierRefID.Value} not found.");
             if (!supplier.IsActive)
-                throw new ValidationException($"Supplier '{supplier.Name}' is not active.");
+                return ApiResponse<PurchaseOrderViewModel>.Fail($"Supplier '{supplier.Name}' is not active.");
             supplierName = supplier.Name;
             supplierId = supplier.SupplierID.ToString();
         }
@@ -84,7 +85,7 @@ public class PurchaseOrderServiceImpl(
         foreach (var item in request.Items)
         {
             if (!await inventoryRepo.ExistsAsync(item.InventoryID))
-                throw new NotFoundException($"Inventory item {item.InventoryID} not found.");
+                return ApiResponse<PurchaseOrderViewModel>.Fail($"Inventory item {item.InventoryID} not found.");
         }
 
         var items = request.Items.Select(i => new PurchaseOrderItem
@@ -108,7 +109,6 @@ public class PurchaseOrderServiceImpl(
             Notes = request.Notes,
             TotalAmount = items.Sum(i => i.TotalPrice),
             Status = PurchaseOrderStatus.Pending,
-            CreatedDate = DateTime.UtcNow,
             Items = items
         };
 
@@ -122,10 +122,15 @@ public class PurchaseOrderServiceImpl(
 
     public async Task<ApiResponse<PurchaseOrderViewModel>> UpdateStatusAsync(int id, UpdatePurchaseOrderStatusRequest request)
     {
-        var po = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Purchase order {id} not found.");
+        var po = await repo.GetByIdAsync(id);
+        if (po == null)
+            return ApiResponse<PurchaseOrderViewModel>.Fail($"Purchase order {id} not found.");
 
-        // Change 3: auto-update inventory when PO is Received
+        // Guard: only adjust stock once — skip if already Received
+        if (po.Status == PurchaseOrderStatus.Received && request.Status == PurchaseOrderStatus.Received)
+            return ApiResponse<PurchaseOrderViewModel>.Fail("Purchase order is already marked as Received.");
+
+        // Auto-update inventory when PO is first marked as Received
         if (request.Status == PurchaseOrderStatus.Received)
         {
             var (userId, _) = ServiceHelper.GetCurrentUser(httpContextAccessor);
@@ -137,7 +142,6 @@ public class PurchaseOrderServiceImpl(
 
                 invItem.QuantityOnHand += item.Quantity;
                 invItem.Status = DetermineStatus(invItem.QuantityOnHand, invItem.MinimumQuantity);
-                invItem.ModifiedDate = DateTime.UtcNow;
                 item.ReceivedQty = item.Quantity;
 
                 await inventoryRepo.UpdateAsync(invItem);
@@ -157,7 +161,6 @@ public class PurchaseOrderServiceImpl(
         }
 
         po.Status = request.Status;
-        po.ModifiedDate = DateTime.UtcNow;
         var updated = await repo.UpdateAsync(po);
 
         await LogAuditAsync("Updated PO Status", "PurchaseOrder", id.ToString(),

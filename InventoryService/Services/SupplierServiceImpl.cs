@@ -2,7 +2,6 @@ using InventoryService.DTOs;
 using InventoryService.Models;
 using InventoryService.Repositories.Interfaces;
 using InventoryService.Services.Interfaces;
-using ManuTrack.SharedKernel.Exceptions;
 using ManuTrack.SharedKernel.Responses;
 
 namespace InventoryService.Services;
@@ -17,8 +16,9 @@ public class SupplierServiceImpl(ISupplierRepository repo) : ISupplierService
 
     public async Task<ApiResponse<SupplierViewModel>> GetByIdAsync(int id)
     {
-        var supplier = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Supplier {id} not found.");
+        var supplier = await repo.GetByIdAsync(id);
+        if (supplier == null)
+            return ApiResponse<SupplierViewModel>.Fail($"Supplier {id} not found.");
         return ApiResponse<SupplierViewModel>.Ok(Map(supplier));
     }
 
@@ -41,8 +41,9 @@ public class SupplierServiceImpl(ISupplierRepository repo) : ISupplierService
 
     public async Task<ApiResponse<SupplierViewModel>> UpdateAsync(int id, UpdateSupplierRequest request)
     {
-        var supplier = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Supplier {id} not found.");
+        var supplier = await repo.GetByIdAsync(id);
+        if (supplier == null)
+            return ApiResponse<SupplierViewModel>.Fail($"Supplier {id} not found.");
 
         if (request.Name != null) supplier.Name = request.Name;
         if (request.ContactPerson != null) supplier.ContactPerson = request.ContactPerson;
@@ -58,11 +59,12 @@ public class SupplierServiceImpl(ISupplierRepository repo) : ISupplierService
 
     public async Task<ApiResponse> DeleteAsync(int id)
     {
-        var supplier = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Supplier {id} not found.");
+        var supplier = await repo.GetByIdAsync(id);
+        if (supplier == null)
+            return ApiResponse.Fail($"Supplier {id} not found.");
 
         if (await repo.HasPurchaseOrdersAsync(id))
-            throw new ConflictException($"Cannot delete supplier '{supplier.Name}' because it has linked purchase orders.");
+            return ApiResponse.Fail($"Cannot delete supplier '{supplier.Name}' because it has linked purchase orders.");
 
         await repo.DeleteAsync(supplier);
         return ApiResponse.Ok("Supplier deleted successfully.");

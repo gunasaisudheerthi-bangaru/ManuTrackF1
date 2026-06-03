@@ -46,6 +46,11 @@
         "Path": "WorkOrderService\\WorkOrderService.csproj",
         "Action": "Start",
         "DebugTarget": "http"
+      },
+      {
+        "Path": "ManuTrack.UI\\ManuTrack.UI.esproj",
+        "Action": "Start",
+        "DebugTarget": "localhost (Edge)"
       }
     ]
   }

@@ -2,7 +2,6 @@ using ComplianceService.DTOs;
 using ComplianceService.Models;
 using ComplianceService.Repositories.Interfaces;
 using ComplianceService.Services.Interfaces;
-using ManuTrack.SharedKernel.Exceptions;
 using ManuTrack.SharedKernel.Responses;
 
 namespace ComplianceService.Services;
@@ -43,8 +42,9 @@ public class AuditServiceImpl(IAuditRepository repo) : IAuditService
 
     public async Task<ApiResponse<AuditEntryViewModel>> GetByIdAsync(int id)
     {
-        var entry = await repo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Audit entry {id} not found.");
+        var entry = await repo.GetByIdAsync(id);
+        if (entry == null)
+            return ApiResponse<AuditEntryViewModel>.Fail($"Audit entry {id} not found.");
         return ApiResponse<AuditEntryViewModel>.Ok(Map(entry));
     }
 

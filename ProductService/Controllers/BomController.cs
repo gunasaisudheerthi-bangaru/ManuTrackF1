@@ -24,6 +24,7 @@ public class BomController(IBomService service) : ControllerBase
     public async Task<ActionResult<ApiResponse<BomViewModel>>> GetById(int id)
     {
         var result = await service.GetBomByIdAsync(id);
+        if (!result.Success) return NotFound(result);
         return Ok(result);
     }
 
@@ -31,6 +32,7 @@ public class BomController(IBomService service) : ControllerBase
     public async Task<ActionResult<ApiResponse<IEnumerable<BomViewModel>>>> GetByProduct(int productId)
     {
         var result = await service.GetBomsByProductIdAsync(productId);
+        if (!result.Success) return NotFound(result);
         return Ok(result);
     }
 
@@ -39,6 +41,7 @@ public class BomController(IBomService service) : ControllerBase
     public async Task<ActionResult<ApiResponse<BomViewModel>>> Create([FromBody] CreateBomRequest request)
     {
         var result = await service.CreateBomAsync(request);
+        if (!result.Success) return BadRequest(result);
         return CreatedAtAction(nameof(GetById), new { id = result.Data!.BOMID }, result);
     }
 
@@ -47,6 +50,7 @@ public class BomController(IBomService service) : ControllerBase
     public async Task<ActionResult<ApiResponse<BomViewModel>>> Update(int id, [FromBody] UpdateBomRequest request)
     {
         var result = await service.UpdateBomAsync(id, request);
+        if (!result.Success) return NotFound(result);
         return Ok(result);
     }
 
@@ -55,6 +59,7 @@ public class BomController(IBomService service) : ControllerBase
     public async Task<ActionResult<ApiResponse<BomViewModel>>> UpdateStatus(int id, [FromBody] UpdateBomStatusRequest request)
     {
         var result = await service.UpdateBomStatusAsync(id, request);
+        if (!result.Success) return NotFound(result);
         return Ok(result);
     }
 
@@ -63,6 +68,7 @@ public class BomController(IBomService service) : ControllerBase
     public async Task<ActionResult<ApiResponse>> Delete(int id)
     {
         var result = await service.DeleteBomAsync(id);
+        if (!result.Success) return NotFound(result);
         return Ok(result);
     }
 }

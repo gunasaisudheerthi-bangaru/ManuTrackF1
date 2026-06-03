@@ -12,19 +12,24 @@ namespace AnalyticsService.Controllers;
 [Authorize]
 public class AnalyticsController(IAnalyticsService service) : ControllerBase
 {
-    // Change 4: enriched cross-service dashboard
     [HttpGet("dashboard")]
     public async Task<ActionResult<ApiResponse<DashboardSummaryViewModel>>> GetDashboard()
-        => Ok(await service.GetDashboardSummaryAsync());
+    {
+        return Ok(await service.GetDashboardSummaryAsync());
+    }
 
     [HttpGet("reports")]
     public async Task<ActionResult<ApiResponse<IEnumerable<KpiReportViewModel>>>> GetReports(
         [FromQuery] string? reportType)
-        => Ok(await service.GetAllReportsAsync(reportType));
+    {
+        return Ok(await service.GetAllReportsAsync(reportType));
+    }
 
     [HttpGet("reports/{id:int}")]
     public async Task<ActionResult<ApiResponse<KpiReportViewModel>>> GetReportById(int id)
-        => Ok(await service.GetReportByIdAsync(id));
+    {
+        return Ok(await service.GetReportByIdAsync(id));
+    }
 
     [HttpPost("reports")]
     [Authorize(Roles = "Admin,ComplianceOfficer,Planner")]
@@ -36,7 +41,6 @@ public class AnalyticsController(IAnalyticsService service) : ControllerBase
         return CreatedAtAction(nameof(GetReportById), new { id = result.Data!.ReportID }, result);
     }
 
-    // Change 3: paginated metrics endpoint
     [HttpGet("metrics")]
     public async Task<ActionResult<ApiResponse<PagedMetricsViewModel>>> GetMetrics(
         [FromQuery] string? metricType,
@@ -45,10 +49,14 @@ public class AnalyticsController(IAnalyticsService service) : ControllerBase
         [FromQuery] DateTime? to,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
-        => Ok(await service.GetMetricsAsync(metricType, serviceSource, from, to, page, pageSize));
+    {
+        return Ok(await service.GetMetricsAsync(metricType, serviceSource, from, to, page, pageSize));
+    }
 
     [HttpPost("metrics")]
     public async Task<ActionResult<ApiResponse<ProductionMetricViewModel>>> RecordMetric(
         [FromBody] RecordMetricRequest request)
-        => Ok(await service.RecordMetricAsync(request));
+    {
+        return Ok(await service.RecordMetricAsync(request));
+    }
 }

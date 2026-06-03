@@ -43,7 +43,4 @@ public class DefectViewModel
     public string Severity { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public string? ResolutionDescription { get; set; }
-    public DateTime CreatedDate { get; set; }
-    public DateTime? UpdatedDate { get; set; }
-    public DateTime? ResolvedDate { get; set; }
 }

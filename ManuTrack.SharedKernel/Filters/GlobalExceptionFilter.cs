@@ -1,39 +1,42 @@
-﻿using ManuTrack.SharedKernel.Exceptions;
+using ManuTrack.SharedKernel.Exceptions;
 using ManuTrack.SharedKernel.Responses;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.Extensions.Logging;
 
 namespace ManuTrack.SharedKernel.Filters;
 
-public class GlobalExceptionFilter : IExceptionFilter
+/// <summary>
+/// Wraps every controller action in a try-catch at the USER CODE level.
+/// VS debugger will NOT break because exceptions are caught before leaving user code.
+/// </summary>
+public class GlobalExceptionFilter : IAsyncActionFilter
 {
-    private readonly ILogger<GlobalExceptionFilter> _logger;
-
-    public GlobalExceptionFilter(ILogger<GlobalExceptionFilter> logger)
+    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
-        _logger = logger;
-    }
-
-    public void OnException(ExceptionContext context)
-    {
-        _logger.LogError(context.Exception,
-            "Unhandled exception on {Method} {Path}: {Message}",
-            context.HttpContext.Request.Method,
-            context.HttpContext.Request.Path,
-            context.Exception.Message);
-
-        var (statusCode, response) = context.Exception switch
+        try
         {
-            NotFoundException ex => (404, ApiResponse.Fail(ex.Message)),
-            ValidationException ex => (400, ApiResponse.Fail(ex.Errors)),
-            UnauthorizedException ex => (401, ApiResponse.Fail(ex.Message)),
-            ForbiddenException ex => (403, ApiResponse.Fail(ex.Message)),
-            ConflictException ex => (409, ApiResponse.Fail(ex.Message)),
-            _ => (500, ApiResponse.Fail("An unexpected error occurred."))
-        };
+            var executed = await next();
 
-        context.Result = new ObjectResult(response) { StatusCode = statusCode };
-        context.ExceptionHandled = true;
+            // If the action itself set an exception (unlikely but safe)
+            if (executed.Exception != null && !executed.ExceptionHandled)
+            {
+                executed.Result = MapException(executed.Exception);
+                executed.ExceptionHandled = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            context.Result = MapException(ex);
+        }
     }
+
+    private static IActionResult MapException(Exception ex) => ex switch
+    {
+        NotFoundException e      => new NotFoundObjectResult(ApiResponse.Fail(e.Message)),
+        ValidationException e    => new BadRequestObjectResult(ApiResponse.Fail(e.Errors)),
+        UnauthorizedException e  => new UnauthorizedObjectResult(ApiResponse.Fail(e.Message)),
+        ConflictException e      => new ConflictObjectResult(ApiResponse.Fail(e.Message)),
+        ForbiddenException e     => new ObjectResult(ApiResponse.Fail(e.Message)) { StatusCode = 403 },
+        _                        => new BadRequestObjectResult(ApiResponse.Fail(ex.Message))
+    };
 }

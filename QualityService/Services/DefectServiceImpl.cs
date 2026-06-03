@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Http;
 using QualityService.Enums;
-using ManuTrack.SharedKernel.Exceptions;
 using ManuTrack.SharedKernel.Helpers;
 using ManuTrack.SharedKernel.Responses;
 using QualityService.DTOs;
@@ -80,7 +79,7 @@ public class DefectServiceImpl(
     public async Task<ApiResponse<IEnumerable<DefectViewModel>>> GetByInspectionIdAsync(int inspectionId)
     {
         if (!await inspectionRepo.ExistsAsync(inspectionId))
-            throw new NotFoundException($"Inspection {inspectionId} not found.");
+            return ApiResponse<IEnumerable<DefectViewModel>>.Fail($"Inspection {inspectionId} not found.");
 
         var defects = await defectRepo.GetByInspectionIdAsync(inspectionId);
         return ApiResponse<IEnumerable<DefectViewModel>>.Ok(defects.Select(Map));
@@ -94,15 +93,17 @@ public class DefectServiceImpl(
 
     public async Task<ApiResponse<DefectViewModel>> GetByIdAsync(int id)
     {
-        var defect = await defectRepo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Defect {id} not found.");
+        var defect = await defectRepo.GetByIdAsync(id);
+        if (defect == null)
+            return ApiResponse<DefectViewModel>.Fail($"Defect {id} not found.");
         return ApiResponse<DefectViewModel>.Ok(Map(defect));
     }
 
     public async Task<ApiResponse<DefectViewModel>> CreateAsync(CreateDefectRequest request)
     {
-        var inspection = await inspectionRepo.GetByIdWithDefectsAsync(request.InspectionID)
-            ?? throw new NotFoundException($"Inspection {request.InspectionID} not found.");
+        var inspection = await inspectionRepo.GetByIdWithDefectsAsync(request.InspectionID);
+        if (inspection == null)
+            return ApiResponse<DefectViewModel>.Fail($"Inspection {request.InspectionID} not found.");
 
         var defect = new Defect
         {
@@ -127,12 +128,13 @@ public class DefectServiceImpl(
 
     public async Task<ApiResponse<DefectViewModel>> ResolveAsync(int id, ResolveDefectRequest request)
     {
-        var defect = await defectRepo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Defect {id} not found.");
+        var defect = await defectRepo.GetByIdAsync(id);
+        if (defect == null)
+            return ApiResponse<DefectViewModel>.Fail($"Defect {id} not found.");
 
         // Change 2: explicit service-level validation
         if (string.IsNullOrWhiteSpace(request.ResolutionDescription))
-            throw new ValidationException("Resolution description is required to resolve a defect.");
+            return ApiResponse<DefectViewModel>.Fail("Resolution description is required to resolve a defect.");
 
         defect.ResolutionDescription = request.ResolutionDescription;
         defect.Status = DefectStatus.Resolved;
@@ -149,8 +151,9 @@ public class DefectServiceImpl(
 
     public async Task<ApiResponse<DefectViewModel>> UpdateStatusAsync(int id, UpdateDefectStatusRequest request)
     {
-        var defect = await defectRepo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Defect {id} not found.");
+        var defect = await defectRepo.GetByIdAsync(id);
+        if (defect == null)
+            return ApiResponse<DefectViewModel>.Fail($"Defect {id} not found.");
 
         defect.Status = request.Status;
         defect.UpdatedDate = DateTime.UtcNow;
@@ -173,8 +176,5 @@ public class DefectServiceImpl(
         Severity = d.Severity,
         Status = d.Status,
         ResolutionDescription = d.ResolutionDescription,
-        CreatedDate = d.CreatedDate,
-        UpdatedDate = d.UpdatedDate,
-        ResolvedDate = d.ResolvedDate
     };
 }

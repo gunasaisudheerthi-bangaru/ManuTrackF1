@@ -107,6 +107,7 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+app.UseMiddleware<ManuTrack.SharedKernel.Middleware.ExceptionHandlingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseCors("AllowAll");
 app.UseAuthentication();

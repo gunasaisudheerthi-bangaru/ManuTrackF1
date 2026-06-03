@@ -69,8 +69,6 @@ public class NotificationViewModel
     public string Status { get; set; } = string.Empty;
     public string Priority { get; set; } = string.Empty;
     public DateTime? ExpiryDate { get; set; }
-    public DateTime CreatedDate { get; set; }
-    public DateTime? UpdatedDate { get; set; }
     public DateTime? ReadDate { get; set; }
 }
 

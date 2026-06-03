@@ -1,11 +1,11 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Http;
 using ProductService.Enums;
-using ManuTrack.SharedKernel.Exceptions;
 using ManuTrack.SharedKernel.Helpers;
 using ManuTrack.SharedKernel.Responses;
 using ProductService.DTOs;
 using ProductService.Models;
+using ProductService.Repositories;
 using ProductService.Repositories.Interfaces;
 using ProductService.Services.Interfaces;
 
@@ -14,6 +14,7 @@ namespace ProductService.Services;
 public class BomServiceImpl(
     IBomRepository bomRepo,
     IProductRepository productRepo,
+    IComponentRepository componentRepo,
     IHttpClientFactory httpClientFactory,
     IHttpContextAccessor httpContextAccessor,
     ILogger<BomServiceImpl> logger) : IBomService
@@ -88,15 +89,16 @@ public class BomServiceImpl(
 
     public async Task<ApiResponse<BomViewModel>> GetBomByIdAsync(int id)
     {
-        var bom = await bomRepo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"BOM {id} not found.");
+        var bom = await bomRepo.GetByIdAsync(id);
+        if (bom == null)
+            return ApiResponse<BomViewModel>.Fail($"BOM {id} not found.");
         return ApiResponse<BomViewModel>.Ok(Map(bom));
     }
 
     public async Task<ApiResponse<IEnumerable<BomViewModel>>> GetBomsByProductIdAsync(int productId)
     {
         if (!await productRepo.ExistsAsync(productId))
-            throw new NotFoundException($"Product {productId} not found.");
+            return ApiResponse<IEnumerable<BomViewModel>>.Fail($"Product {productId} not found.");
 
         var boms = await bomRepo.GetByProductIdAsync(productId);
         return ApiResponse<IEnumerable<BomViewModel>>.Ok(boms.Select(Map));
@@ -105,19 +107,21 @@ public class BomServiceImpl(
     public async Task<ApiResponse<BomViewModel>> CreateBomAsync(CreateBomRequest request)
     {
         // Change 2: product must exist AND be Active before allowing BOM creation
-        var product = await productRepo.GetByIdAsync(request.ProductID)
-            ?? throw new NotFoundException($"Product {request.ProductID} not found.");
+        var product = await productRepo.GetByIdAsync(request.ProductID);
+        if (product == null)
+            return ApiResponse<BomViewModel>.Fail($"Product {request.ProductID} not found.");
 
         if (product.Status != ProductStatus.Active)
-            throw new ValidationException(
+            return ApiResponse<BomViewModel>.Fail(
                 $"Product '{product.Name}' is not Active (current status: {product.Status}). " +
                 "A BOM can only be created for Active products.");
 
-        if (!await productRepo.ExistsAsync(request.ComponentID))
-            throw new NotFoundException($"Component product {request.ComponentID} not found.");
+        var component = await componentRepo.GetByIdAsync(request.ComponentID);
+        if (component == null)
+            return ApiResponse<BomViewModel>.Fail($"Component {request.ComponentID} not found. Please register the raw material/component first.");
 
-        if (request.ProductID == request.ComponentID)
-            throw new ValidationException("A product cannot be its own component.");
+        if (!component.IsActive)
+            return ApiResponse<BomViewModel>.Fail($"Component '{component.Name}' is inactive and cannot be used in a BOM.");
 
         var bom = new Bom
         {
@@ -127,26 +131,25 @@ public class BomServiceImpl(
             Version = request.Version,
             Notes = request.Notes,
             Status = ProductStatus.Draft,   // Change 1: default to Draft
-            CreatedDate = DateTime.UtcNow
+            
         };
 
         var created = await bomRepo.CreateAsync(bom);
         var full = await bomRepo.GetByIdAsync(created.BOMID);
 
-        // Change 4: audit log
-        await LogAuditAsync("Created BOM", "BOM", created.BOMID.ToString(),
+        // Fire-and-forget — do NOT await so response returns immediately
+        _ = LogAuditAsync("Created BOM", "BOM", created.BOMID.ToString(),
             $"ProductID: {created.ProductID}, ComponentID: {created.ComponentID}, Quantity: {created.Quantity}");
-
-        // Change 5: low stock alert for the component
-        await CheckLowStockAndNotifyAsync(created.ComponentID, created.Quantity);
+        _ = CheckLowStockAndNotifyAsync(created.ComponentID, created.Quantity);
 
         return ApiResponse<BomViewModel>.Ok(Map(full!), "BOM entry created successfully.");
     }
 
     public async Task<ApiResponse<BomViewModel>> UpdateBomAsync(int id, UpdateBomRequest request)
     {
-        var bom = await bomRepo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"BOM {id} not found.");
+        var bom = await bomRepo.GetByIdAsync(id);
+        if (bom == null)
+            return ApiResponse<BomViewModel>.Fail($"BOM {id} not found.");
 
         if (request.Quantity.HasValue) bom.Quantity = request.Quantity.Value;
         if (request.Version != null) bom.Version = request.Version;
@@ -155,26 +158,27 @@ public class BomServiceImpl(
         var updated = await bomRepo.UpdateAsync(bom);
 
         // Change 4: audit log
-        await LogAuditAsync("Updated BOM", "BOM", id.ToString(),
+        _ = LogAuditAsync("Updated BOM", "BOM", id.ToString(),
             $"Version: {updated.Version}, Quantity: {updated.Quantity}");
 
         // Change 5: re-check low stock when quantity is updated
         if (request.Quantity.HasValue)
-            await CheckLowStockAndNotifyAsync(updated.ComponentID, updated.Quantity);
+            _ = CheckLowStockAndNotifyAsync(updated.ComponentID, updated.Quantity);
 
         return ApiResponse<BomViewModel>.Ok(Map(updated), "BOM updated successfully.");
     }
 
     public async Task<ApiResponse<BomViewModel>> UpdateBomStatusAsync(int id, UpdateBomStatusRequest request)
     {
-        var bom = await bomRepo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"BOM {id} not found.");
+        var bom = await bomRepo.GetByIdAsync(id);
+        if (bom == null)
+            return ApiResponse<BomViewModel>.Fail($"BOM {id} not found.");
 
         bom.Status = request.Status;
         var updated = await bomRepo.UpdateAsync(bom);
 
         // Change 4: audit log
-        await LogAuditAsync("Updated BOM Status", "BOM", id.ToString(),
+        _ = LogAuditAsync("Updated BOM Status", "BOM", id.ToString(),
             $"New Status: {request.Status}");
 
         return ApiResponse<BomViewModel>.Ok(Map(updated), "BOM status updated.");
@@ -182,13 +186,14 @@ public class BomServiceImpl(
 
     public async Task<ApiResponse> DeleteBomAsync(int id)
     {
-        var bom = await bomRepo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"BOM {id} not found.");
+        var bom = await bomRepo.GetByIdAsync(id);
+        if (bom == null)
+            return ApiResponse.Fail($"BOM {id} not found.");
 
         await bomRepo.DeleteAsync(bom);
 
         // Change 4: audit log
-        await LogAuditAsync("Deleted BOM", "BOM", id.ToString(),
+        _ = LogAuditAsync("Deleted BOM", "BOM", id.ToString(),
             $"ProductID: {bom.ProductID}, ComponentID: {bom.ComponentID}");
 
         return ApiResponse.Ok("BOM deleted successfully.");
@@ -203,11 +208,12 @@ public class BomServiceImpl(
         ProductName = b.Product?.Name ?? string.Empty,
         ComponentID = b.ComponentID,
         ComponentName = b.Component?.Name ?? string.Empty,
+        ComponentUnit = b.Component?.Unit ?? string.Empty,
+        ComponentMaterialType = b.Component?.MaterialType ?? string.Empty,
         Quantity = b.Quantity,
         Version = b.Version,
         Status = b.Status,
         Notes = b.Notes,
-        CreatedDate = b.CreatedDate
     };
 
     // ── Local DTO for InventoryService response deserialization ──────────────

@@ -31,8 +31,11 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
         {
             e.HasKey(i => i.InventoryID);
             e.Property(i => i.InventoryID).ValueGeneratedOnAdd();
+            e.Property(i => i.ItemType).IsRequired().HasMaxLength(20).HasDefaultValue("Product");
+            e.Property(i => i.ProductID).IsRequired(false);
+            e.Property(i => i.ComponentID).IsRequired(false);
             e.Property(i => i.ProductName).IsRequired().HasMaxLength(200);
-            e.Property(i => i.LocationID).IsRequired(false);           // nullable FK
+            e.Property(i => i.LocationID).IsRequired(false);
             e.Property(i => i.QuantityOnHand).HasColumnType("decimal(18,4)");
             e.Property(i => i.MinimumQuantity).HasColumnType("decimal(18,4)");
             e.Property(i => i.Status).IsRequired().HasMaxLength(50).HasDefaultValue("InStock");

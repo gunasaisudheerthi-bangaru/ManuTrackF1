@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Http;
 using QualityService.Enums;
-using ManuTrack.SharedKernel.Exceptions;
 using ManuTrack.SharedKernel.Helpers;
 using ManuTrack.SharedKernel.Responses;
 using QualityService.DTOs;
@@ -71,15 +70,18 @@ public class InspectionServiceImpl(
 
     public async Task<ApiResponse<InspectionViewModel>> GetByIdAsync(int id)
     {
-        var inspection = await repo.GetByIdWithDefectsAsync(id)
-            ?? throw new NotFoundException($"Inspection {id} not found.");
+        var inspection = await repo.GetByIdWithDefectsAsync(id);
+        if (inspection == null)
+            return ApiResponse<InspectionViewModel>.Fail($"Inspection {id} not found.");
         return ApiResponse<InspectionViewModel>.Ok(Map(inspection));
     }
 
     public async Task<ApiResponse<InspectionViewModel>> CreateAsync(CreateInspectionRequest request)
     {
         // Change 6: check WorkOrder status before creating inspection
-        await ValidateWorkOrderStatusAsync(request.WorkOrderID);
+        var validationError = await ValidateWorkOrderStatusAsync(request.WorkOrderID);
+        if (validationError != null)
+            return ApiResponse<InspectionViewModel>.Fail(validationError);
 
         var inspection = new Inspection
         {
@@ -103,8 +105,9 @@ public class InspectionServiceImpl(
 
     public async Task<ApiResponse<InspectionViewModel>> UpdateResultAsync(int id, UpdateInspectionResultRequest request)
     {
-        var inspection = await repo.GetByIdWithDefectsAsync(id)
-            ?? throw new NotFoundException($"Inspection {id} not found.");
+        var inspection = await repo.GetByIdWithDefectsAsync(id);
+        if (inspection == null)
+            return ApiResponse<InspectionViewModel>.Fail($"Inspection {id} not found.");
 
         inspection.Result = request.Result;
         inspection.Status = request.Status;
@@ -124,30 +127,35 @@ public class InspectionServiceImpl(
     }
 
     // ── Change 6: Validate WorkOrder status before inspection ─────────────────
-    private async Task ValidateWorkOrderStatusAsync(int workOrderId)
+    // Returns null if OK, error message string if validation fails
+    private async Task<string?> ValidateWorkOrderStatusAsync(int workOrderId)
     {
         try
         {
             var client = ServiceHelper.CreateAuthorizedClient(httpClientFactory, httpContextAccessor, "WorkOrderService");
             var response = await client.GetAsync($"api/v1/workorders/{workOrderId}");
-            if (!response.IsSuccessStatusCode) return; // if WO service down, allow through
+            if (!response.IsSuccessStatusCode) return null; // if WO service down, allow through
 
             var result = await response.Content
                 .ReadFromJsonAsync<WorkOrderResponseDto>(
                     new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
             var status = result?.Data?.Status;
-            if (status == null) return;
+            if (status == null) return null;
 
             if (status == "Cancelled")
-                throw new ValidationException("Cannot create inspection for a cancelled work order.");
+                return "Cannot create inspection for a cancelled work order.";
 
             if (status == "Pending" || status == "Scheduled")
-                throw new ValidationException(
-                    "Cannot create inspection for a work order that has not started yet.");
+                return "Cannot create inspection for a work order that has not started yet.";
+
+            return null;
         }
-        catch (ValidationException) { throw; }
-        catch (Exception ex) { logger.LogWarning(ex, "WorkOrderService unavailable during status validation for WO {WorkOrderId}. Allowing through.", workOrderId); }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "WorkOrderService unavailable during status validation for WO {WorkOrderId}. Allowing through.", workOrderId);
+            return null;
+        }
     }
 
     // ── Mapper ────────────────────────────────────────────────────────────────
@@ -163,8 +171,6 @@ public class InspectionServiceImpl(
         Result = i.Result,
         Status = i.Status,
         Notes = i.Notes,
-        CreatedDate = i.CreatedDate,
-        UpdatedDate = i.UpdatedDate,
         TotalDefectCount = i.Defects.Count,
         CriticalCount = i.Defects.Count(d => d.Severity == "Critical"),
         HighCount = i.Defects.Count(d => d.Severity == "High"),

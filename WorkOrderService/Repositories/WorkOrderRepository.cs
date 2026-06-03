@@ -14,7 +14,7 @@ public class WorkOrderRepository(WorkOrderDbContext db) : IWorkOrderRepository
             query = query.Where(w => w.Status == status);
         if (productId.HasValue)
             query = query.Where(w => w.ProductID == productId.Value);
-        return await query.OrderByDescending(w => w.CreatedDate).ToListAsync();
+        return await query.OrderByDescending(w => w.WorkOrderID).ToListAsync();
     }
 
     public async Task<WorkOrder?> GetByIdAsync(int id) =>

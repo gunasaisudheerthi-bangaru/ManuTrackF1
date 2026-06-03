@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Http;
 using WorkOrderService.Enums;
-using ManuTrack.SharedKernel.Exceptions;
 using ManuTrack.SharedKernel.Helpers;
 using ManuTrack.SharedKernel.Responses;
 using WorkOrderService.DTOs;
@@ -45,7 +44,7 @@ public class WorkOrderTaskServiceImpl(
     public async Task<ApiResponse<IEnumerable<WorkOrderTaskViewModel>>> GetByWorkOrderIdAsync(int workOrderId)
     {
         if (!await workOrderRepo.ExistsAsync(workOrderId))
-            throw new NotFoundException($"WorkOrder {workOrderId} not found.");
+            return ApiResponse<IEnumerable<WorkOrderTaskViewModel>>.Fail($"WorkOrder {workOrderId} not found.");
 
         var tasks = await taskRepo.GetByWorkOrderIdAsync(workOrderId);
         return ApiResponse<IEnumerable<WorkOrderTaskViewModel>>.Ok(tasks.Select(Map));
@@ -53,24 +52,25 @@ public class WorkOrderTaskServiceImpl(
 
     public async Task<ApiResponse<WorkOrderTaskViewModel>> GetByIdAsync(int id)
     {
-        var task = await taskRepo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Task {id} not found.");
+        var task = await taskRepo.GetByIdAsync(id);
+        if (task == null)
+            return ApiResponse<WorkOrderTaskViewModel>.Fail($"Task {id} not found.");
         return ApiResponse<WorkOrderTaskViewModel>.Ok(Map(task));
     }
 
     public async Task<ApiResponse<WorkOrderTaskViewModel>> CreateAsync(CreateWorkOrderTaskRequest request)
     {
         if (!await workOrderRepo.ExistsAsync(request.WorkOrderID))
-            throw new NotFoundException($"WorkOrder {request.WorkOrderID} not found.");
+            return ApiResponse<WorkOrderTaskViewModel>.Fail($"WorkOrder {request.WorkOrderID} not found.");
 
         var task = new WorkOrderTask
         {
             WorkOrderID = request.WorkOrderID,
             Description = request.Description,
             AssignedTo = request.AssignedTo,
-            Notes = request.Notes,
+            
             Status = WorkOrderTaskStatus.Pending,
-            CreatedDate = DateTime.UtcNow
+            
         };
 
         var created = await taskRepo.CreateAsync(task);
@@ -83,44 +83,80 @@ public class WorkOrderTaskServiceImpl(
 
     public async Task<ApiResponse<WorkOrderTaskViewModel>> UpdateAsync(int id, UpdateWorkOrderTaskRequest request)
     {
-        var task = await taskRepo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Task {id} not found.");
+        var task = await taskRepo.GetByIdAsync(id);
+        if (task == null)
+            return ApiResponse<WorkOrderTaskViewModel>.Fail($"Task {id} not found.");
 
-        if (request.Description != null) task.Description = request.Description;
-        if (request.AssignedTo != null) task.AssignedTo = request.AssignedTo;
-        if (request.Notes != null) task.Notes = request.Notes;
-        task.UpdatedDate = DateTime.UtcNow;
+        // UpdateWorkOrderTaskRequest is empty — no fields to update
 
         var updated = await taskRepo.UpdateAsync(task);
 
-        await LogAuditAsync("Updated Task", "WorkOrderTask", id.ToString(),
-            $"AssignedTo: {updated.AssignedTo}, Description: {updated.Description}");
+        await LogAuditAsync("Updated Task", "WorkOrderTask", id.ToString(), string.Empty);
 
         return ApiResponse<WorkOrderTaskViewModel>.Ok(Map(updated), "Task updated successfully.");
     }
 
     public async Task<ApiResponse<WorkOrderTaskViewModel>> UpdateStatusAsync(int id, UpdateTaskStatusRequest request)
     {
-        var task = await taskRepo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Task {id} not found.");
+        var task = await taskRepo.GetByIdAsync(id);
+        if (task == null)
+            return ApiResponse<WorkOrderTaskViewModel>.Fail($"Task {id} not found.");
 
         task.Status = request.Status;
-        if (request.Status == WorkOrderTaskStatus.Completed)
-            task.CompletedDate = DateTime.UtcNow;
-        task.UpdatedDate = DateTime.UtcNow;
-
         var updated = await taskRepo.UpdateAsync(task);
 
         await LogAuditAsync("Updated Task Status", "WorkOrderTask", id.ToString(),
             $"New Status: {request.Status}");
 
+        // Auto-complete Work Order when ALL tasks are Completed
+        if (request.Status == WorkOrderTaskStatus.Completed)
+        {
+            var allTasks = await taskRepo.GetByWorkOrderIdAsync(task.WorkOrderID);
+            if (allTasks.Any() && allTasks.All(t => t.Status == WorkOrderTaskStatus.Completed))
+            {
+                var order = await workOrderRepo.GetByIdAsync(task.WorkOrderID);
+                if (order != null && order.Status != WorkOrderStatus.Completed
+                                  && order.Status != WorkOrderStatus.Cancelled)
+                {
+                    order.Status = WorkOrderStatus.Completed;
+                    await workOrderRepo.UpdateAsync(order);
+
+                    await LogAuditAsync("Auto-Completed WorkOrder", "WorkOrder",
+                        task.WorkOrderID.ToString(),
+                        $"All tasks completed — Work Order auto-marked as Completed.");
+
+                    // Fire-and-forget notification
+                    _ = NotifyWorkOrderCompletedAsync(task.WorkOrderID);
+                }
+            }
+        }
+
         return ApiResponse<WorkOrderTaskViewModel>.Ok(Map(updated), "Task status updated.");
+    }
+
+    private async Task NotifyWorkOrderCompletedAsync(int workOrderId)
+    {
+        try
+        {
+            var (userId, _) = ServiceHelper.GetCurrentUser(httpContextAccessor);
+            if (userId == 0) return;
+            var client = ServiceHelper.CreateAuthorizedClient(httpClientFactory, httpContextAccessor, "NotificationService");
+            await client.PostAsJsonAsync("api/v1/notifications", new
+            {
+                UserID = userId,
+                Title = "Work Order Completed",
+                Message = $"Work Order #{workOrderId} has been completed — all tasks done.",
+                Category = "WorkOrder"
+            });
+        }
+        catch (Exception ex) { logger.LogWarning(ex, "WO completion notification failed for WO {WorkOrderId}.", workOrderId); }
     }
 
     public async Task<ApiResponse> DeleteAsync(int id)
     {
-        var task = await taskRepo.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Task {id} not found.");
+        var task = await taskRepo.GetByIdAsync(id);
+        if (task == null)
+            return ApiResponse.Fail($"Task {id} not found.");
 
         await taskRepo.DeleteAsync(task);
 
@@ -139,9 +175,9 @@ public class WorkOrderTaskServiceImpl(
         Description = t.Description,
         AssignedTo = t.AssignedTo,
         Status = t.Status,
-        CompletedDate = t.CompletedDate,
-        Notes = t.Notes,
-        CreatedDate = t.CreatedDate,
-        UpdatedDate = t.UpdatedDate
+        
+        
+        
+        
     };
 }

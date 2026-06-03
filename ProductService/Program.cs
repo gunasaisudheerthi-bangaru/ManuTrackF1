@@ -105,11 +105,13 @@ builder.Services.AddHttpClient("NotificationService", client =>
 
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IBomRepository, BomRepository>();
+builder.Services.AddScoped<IComponentRepository, ComponentRepository>();
 builder.Services.AddScoped<IProductService, ProductServiceImpl>();
 builder.Services.AddScoped<IBomService, BomServiceImpl>();
 
 var app = builder.Build();
 
+app.UseMiddleware<ManuTrack.SharedKernel.Middleware.ExceptionHandlingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseCors("AllowAll");
 app.UseAuthentication();

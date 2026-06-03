@@ -6,7 +6,6 @@ public class RegisterRequest
 {
     [Required(ErrorMessage = "Name is required.")]
     [StringLength(100, MinimumLength = 2, ErrorMessage = "Name must be between 2 and 100 characters.")]
-    [RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "Name can only contain letters and spaces.")]
     public string Name { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Email is required.")]
@@ -60,6 +59,19 @@ public class ChangePasswordRequest
     [Required(ErrorMessage = "Confirm new password is required.")]
     [Compare("NewPassword", ErrorMessage = "New password and confirm password do not match.")]
     public string ConfirmNewPassword { get; set; } = string.Empty;
+}
+
+public class UpdateUserRequest
+{
+    [StringLength(100, MinimumLength = 2, ErrorMessage = "Name must be between 2 and 100 characters.")]
+    public string? Name { get; set; }
+
+    [RegularExpression(@"^\+?[0-9]{10,15}$", ErrorMessage = "Phone must be 10-15 digits.")]
+    public string? Phone { get; set; }
+
+    [RegularExpression("^(Admin|Planner|Operator|Inspector|InventoryManager|ComplianceOfficer)$",
+        ErrorMessage = "Invalid role.")]
+    public string? Role { get; set; }
 }
 
 public record LoginResponse(

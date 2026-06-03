@@ -8,7 +8,5 @@ public class Product
     public string Version { get; set; } = "1.0";
     public string Status { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-    public DateTime? ModifiedDate { get; set; }
     public ICollection<Bom> Boms { get; set; } = new List<Bom>();
 }

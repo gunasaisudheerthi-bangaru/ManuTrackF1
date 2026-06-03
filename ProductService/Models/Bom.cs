@@ -9,7 +9,6 @@ public class Bom
     public string Version { get; set; } = "1.0";
     public string Status { get; set; } = string.Empty;
     public string? Notes { get; set; }
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
     public Product? Product { get; set; }
-    public Product? Component { get; set; }
+    public Component? Component { get; set; }
 }

@@ -1,0 +1,191 @@
+version: '3.9'
+
+services:
+
+  # ─── Angular Frontend ───────────────────────────────────────────
+  manutrack-ui:
+    build:
+      context: ./ManuTrack.UI
+      dockerfile: Dockerfile
+    container_name: manutrack-ui
+    ports:
+      - "4200:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - manutrack-net
+
+  # ─── API Gateway (Ocelot) ────────────────────────────────────────
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ApiGateway/Dockerfile
+    container_name: api-gateway
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    depends_on:
+      - auth-service
+      - workorder-service
+      - inventory-service
+      - product-service
+      - analytics-service
+      - quality-service
+      - compliance-service
+      - notification-service
+    networks:
+      - manutrack-net
+
+  # ─── Auth Service ────────────────────────────────────────────────
+  auth-service:
+    build:
+      context: .
+      dockerfile: AuthService/Dockerfile
+    container_name: auth-service
+    ports:
+      - "5001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__GovernanceDb=Server=sqlserver;Database=GovernanceDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True
+    depends_on:
+      - sqlserver
+    networks:
+      - manutrack-net
+
+  # ─── WorkOrder Service ───────────────────────────────────────────
+  workorder-service:
+    build:
+      context: .
+      dockerfile: WorkOrderService/Dockerfile
+    container_name: workorder-service
+    ports:
+      - "5002:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__OperationsDb=Server=sqlserver;Database=OperationsDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True
+    depends_on:
+      - sqlserver
+    networks:
+      - manutrack-net
+
+  # ─── Inventory Service ───────────────────────────────────────────
+  inventory-service:
+    build:
+      context: .
+      dockerfile: InventoryService/Dockerfile
+    container_name: inventory-service
+    ports:
+      - "5003:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__OperationsDb=Server=sqlserver;Database=OperationsDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True
+    depends_on:
+      - sqlserver
+    networks:
+      - manutrack-net
+
+  # ─── Product Service ─────────────────────────────────────────────
+  product-service:
+    build:
+      context: .
+      dockerfile: ProductService/Dockerfile
+    container_name: product-service
+    ports:
+      - "5004:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__OperationsDb=Server=sqlserver;Database=OperationsDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True
+    depends_on:
+      - sqlserver
+    networks:
+      - manutrack-net
+
+  # ─── Analytics Service ───────────────────────────────────────────
+  analytics-service:
+    build:
+      context: .
+      dockerfile: AnalyticsService/Dockerfile
+    container_name: analytics-service
+    ports:
+      - "5005:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__QualityDb=Server=sqlserver;Database=QualityDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True
+    depends_on:
+      - sqlserver
+    networks:
+      - manutrack-net
+
+  # ─── Quality Service ─────────────────────────────────────────────
+  quality-service:
+    build:
+      context: .
+      dockerfile: QualityService/Dockerfile
+    container_name: quality-service
+    ports:
+      - "5006:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__QualityDb=Server=sqlserver;Database=QualityDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True
+    depends_on:
+      - sqlserver
+    networks:
+      - manutrack-net
+
+  # ─── Compliance Service ──────────────────────────────────────────
+  compliance-service:
+    build:
+      context: .
+      dockerfile: ComplianceService/Dockerfile
+    container_name: compliance-service
+    ports:
+      - "5007:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__QualityDb=Server=sqlserver;Database=QualityDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True
+      - ConnectionStrings__GovernanceDb=Server=sqlserver;Database=GovernanceDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True
+    depends_on:
+      - sqlserver
+    networks:
+      - manutrack-net
+
+  # ─── Notification Service ────────────────────────────────────────
+  notification-service:
+    build:
+      context: .
+      dockerfile: NotificationService/Dockerfile
+    container_name: notification-service
+    ports:
+      - "5008:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__GovernanceDb=Server=sqlserver;Database=GovernanceDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True
+    depends_on:
+      - sqlserver
+    networks:
+      - manutrack-net
+
+  # ─── SQL Server ──────────────────────────────────────────────────
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong@Passw0rd
+      - MSSQL_PID=Express
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    networks:
+      - manutrack-net
+
+# ─── Volumes ─────────────────────────────────────────────────────
+volumes:
+  sqlserver-data:
+
+# ─── Networks ────────────────────────────────────────────────────
+networks:
+  manutrack-net:
+    driver: bridge

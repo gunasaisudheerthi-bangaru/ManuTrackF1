@@ -123,7 +123,7 @@ app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Auth Servic
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
-    db.Database.Migrate();
+    db.Database.EnsureCreated();
 
     // Seed default admin if no users exist
     if (!db.Users.Any())

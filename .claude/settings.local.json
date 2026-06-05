@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\2487429\\\\OneDrive - Cognizant\\\\Desktop\\\\Project\\\\ManuTrack\" -Force)",
-      "Bash(Select-Object Mode, Name)"
+      "Bash(Select-Object Mode, Name)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\2483413\\\\OneDrive - Cognizant\\\\Desktop\\\\Project\\\\ManuTrack--latest\\\\ManuTrackF1\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(echo '=== __TRACKED_VAR__ ===')",
+      "Read(//c/Users/2483413/OneDrive - Cognizant/Desktop/Project/ManuTrack--latest/**)",
+      "Bash(findstr /i \"outputPath\\\\|project\\\\|browser\")"
     ]
   }
 }

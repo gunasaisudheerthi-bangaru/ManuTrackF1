@@ -24,7 +24,7 @@ export interface BroadcastNotificationRequest {
 
 @Injectable({ providedIn: 'root' })
 export class NotificationAdminService {
-  private readonly base = 'http://localhost:5000/api/v1/notifications';
+  private readonly base = '/api/v1/notifications';
 
   constructor(private http: HttpClient) {}
 

@@ -27,7 +27,7 @@ export interface ApiResponse<T> {
 
 @Injectable({ providedIn: 'root' })
 export class ProductService {
-  private readonly base = 'http://localhost:5000/api/v1/products';
+  private readonly base = '/api/v1/products';
 
   constructor(private http: HttpClient) {}
 

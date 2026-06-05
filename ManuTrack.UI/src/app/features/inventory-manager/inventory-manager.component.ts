@@ -140,7 +140,7 @@ export class InventoryManagerComponent implements OnInit {
     if (this.poNotifying[po.poid]) return;
     this.poNotifying[po.poid] = true;
     const item = po.items?.[0];
-    this.http.post<any>('http://localhost:5000/api/v1/notifications/broadcast', {
+    this.http.post<any>('/api/v1/notifications/broadcast', {
       title: `PO-${po.poid} Approval Required`,
       message: `Purchase Order PO-${po.poid} from ${po.supplierName} for ${item?.productName ?? 'items'} (Qty: ${item?.quantity ?? '—'}, ₹${po.totalAmount?.toFixed(2)}) requires your approval.`,
       category: 'Inventory',
@@ -446,16 +446,16 @@ export class InventoryManagerComponent implements OnInit {
   // â”€â”€ NOTIFICATIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   loadNotifications(): void {
     this.notificationsLoading = true;
-    this.http.get<any>('http://localhost:5000/api/v1/notifications/my')
+    this.http.get<any>('/api/v1/notifications/my')
       .pipe(timeout(10000), finalize(() => { this.notificationsLoading = false; this.cdr.detectChanges(); }))
       .subscribe({ next: res => { this.notifications = res?.data ?? []; this.cdr.detectChanges(); }, error: () => {} });
-    this.http.get<any>('http://localhost:5000/api/v1/notifications/my/unread-count')
+    this.http.get<any>('/api/v1/notifications/my/unread-count')
       .pipe(timeout(5000))
       .subscribe({ next: res => { this.unreadCount = res?.data?.totalUnread ?? 0; this.cdr.detectChanges(); }, error: () => {} });
   }
 
   markRead(id: number): void {
-    this.http.put<any>(`http://localhost:5000/api/v1/notifications/${id}/read`, {}).subscribe({
+    this.http.put<any>(`/api/v1/notifications/${id}/read`, {}).subscribe({
       next: () => { const n = this.notifications.find(x => x.notificationID === id); if (n) { n.status = 'Read'; this.unreadCount = Math.max(0, this.unreadCount - 1); this.cdr.detectChanges(); } },
       error: () => {}
     });

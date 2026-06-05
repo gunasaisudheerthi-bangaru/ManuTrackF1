@@ -22,7 +22,7 @@ export interface CreateComponentRequest {
 
 @Injectable({ providedIn: 'root' })
 export class ComponentService {
-  private readonly base = 'http://localhost:5000/api/v1/components';
+  private readonly base = '/api/v1/components';
 
   constructor(private http: HttpClient) {}
 

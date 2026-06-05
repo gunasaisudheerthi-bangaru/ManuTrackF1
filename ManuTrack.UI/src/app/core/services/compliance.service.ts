@@ -31,8 +31,8 @@ export interface CreateComplianceReportRequest {
 
 @Injectable({ providedIn: 'root' })
 export class ComplianceService {
-  private readonly compBase  = 'http://localhost:5000/api/v1/compliance';
-  private readonly auditBase = 'http://localhost:5000/api/v1/audit-logs';
+  private readonly compBase  = '/api/v1/compliance';
+  private readonly auditBase = '/api/v1/audit-logs';
 
   constructor(private http: HttpClient) {}
 

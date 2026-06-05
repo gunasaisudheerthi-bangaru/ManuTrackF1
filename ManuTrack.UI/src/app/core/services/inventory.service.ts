@@ -82,9 +82,9 @@ export interface CreateSupplierRequest {
 
 @Injectable({ providedIn: 'root' })
 export class InventoryService {
-  private readonly invBase  = 'http://localhost:5000/api/v1/inventory';
-  private readonly poBase   = 'http://localhost:5000/api/v1/purchase-orders';
-  private readonly supBase  = 'http://localhost:5000/api/v1/suppliers';
+  private readonly invBase  = '/api/v1/inventory';
+  private readonly poBase   = '/api/v1/purchase-orders';
+  private readonly supBase  = '/api/v1/suppliers';
 
   constructor(private http: HttpClient) {}
 

@@ -22,7 +22,7 @@ export interface PagedAuditViewModel {
 
 @Injectable({ providedIn: 'root' })
 export class AuditService {
-  private readonly base = 'http://localhost:5000/api/v1/audit-logs';
+  private readonly base = '/api/v1/audit-logs';
 
   constructor(private http: HttpClient) {}
 

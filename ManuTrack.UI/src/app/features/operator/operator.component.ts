@@ -279,16 +279,16 @@ export class OperatorComponent implements OnInit {
   // â”€â”€ NOTIFICATIONS (own only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   loadNotifications(): void {
     this.notificationsLoading = true;
-    this.http.get<any>('http://localhost:5000/api/v1/notifications/my')
+    this.http.get<any>('/api/v1/notifications/my')
       .pipe(timeout(10000), finalize(() => { this.notificationsLoading = false; this.cdr.detectChanges(); }))
       .subscribe({ next: res => { this.notifications = res?.data ?? []; this.cdr.detectChanges(); }, error: () => {} });
-    this.http.get<any>('http://localhost:5000/api/v1/notifications/my/unread-count')
+    this.http.get<any>('/api/v1/notifications/my/unread-count')
       .pipe(timeout(5000))
       .subscribe({ next: res => { this.unreadCount = res?.data?.totalUnread ?? 0; this.cdr.detectChanges(); }, error: () => {} });
   }
 
   markRead(id: number): void {
-    this.http.put<any>(`http://localhost:5000/api/v1/notifications/${id}/read`, {}).subscribe({
+    this.http.put<any>(`/api/v1/notifications/${id}/read`, {}).subscribe({
       next: () => {
         const n = this.notifications.find(x => x.notificationID === id);
         if (n) { n.status = 'Read'; this.unreadCount = Math.max(0, this.unreadCount - 1); this.cdr.detectChanges(); }

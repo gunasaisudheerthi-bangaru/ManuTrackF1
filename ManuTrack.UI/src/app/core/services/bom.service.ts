@@ -28,7 +28,7 @@ export interface CreateBomRequest {
 
 @Injectable({ providedIn: 'root' })
 export class BomService {
-  private readonly base = 'http://localhost:5000/api/v1/bom';
+  private readonly base = '/api/v1/bom';
 
   constructor(private http: HttpClient) {}
 

@@ -47,8 +47,8 @@ export interface CreateDefectRequest {
 
 @Injectable({ providedIn: 'root' })
 export class QualityService {
-  private readonly inspBase = 'http://localhost:5000/api/v1/inspections';
-  private readonly defBase  = 'http://localhost:5000/api/v1/defects';
+  private readonly inspBase = '/api/v1/inspections';
+  private readonly defBase  = '/api/v1/defects';
 
   constructor(private http: HttpClient) {}
 

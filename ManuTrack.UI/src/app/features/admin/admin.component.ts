@@ -410,7 +410,7 @@ export class AdminComponent implements OnInit {
   loadUsers(): void {
     this.usersLoading = true;
     this.usersError = '';
-    this.http.get<any>('http://localhost:5000/api/v1/auth/users')
+    this.http.get<any>('/api/v1/auth/users')
       .pipe(timeout(10000), finalize(() => { this.usersLoading = false; this.cdr.detectChanges(); }))
       .subscribe({
         next: res => {
@@ -437,7 +437,7 @@ export class AdminComponent implements OnInit {
     }
     this.registerLoading = true;
     this.registerError = '';
-    this.http.post<any>('http://localhost:5000/api/v1/auth/register', v)
+    this.http.post<any>('/api/v1/auth/register', v)
       .pipe(finalize(() => { this.registerLoading = false; this.cdr.detectChanges(); }))
       .subscribe({
       next: (res) => {
@@ -480,7 +480,7 @@ export class AdminComponent implements OnInit {
     if (!this.editingUser) return;
     this.editUserLoading = true;
     const v = this.editUserForm.value;
-    this.http.put<any>(`http://localhost:5000/api/v1/auth/users/${this.editingUser.userID}`, v)
+    this.http.put<any>(`/api/v1/auth/users/${this.editingUser.userID}`, v)
       .subscribe({
         next: (res) => {
           this.editUserLoading = false;
@@ -508,7 +508,7 @@ export class AdminComponent implements OnInit {
     const userId = user.userID;
     const isCurrentlyActive = user.isActive;
     const action = isCurrentlyActive ? 'deactivate' : 'activate';
-    const url = `http://localhost:5000/api/v1/auth/users/${userId}/${action}`;
+    const url = `/api/v1/auth/users/${userId}/${action}`;
 
     this.http.put<any>(url, {}).subscribe({
       next: () => {

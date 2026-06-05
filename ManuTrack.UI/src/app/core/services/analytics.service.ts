@@ -54,7 +54,7 @@ export interface RecordMetricRequest {
 
 @Injectable({ providedIn: 'root' })
 export class AnalyticsService {
-  private readonly base = 'http://localhost:5000/api/v1/analytics';
+  private readonly base = '/api/v1/analytics';
 
   constructor(private http: HttpClient) {}
 

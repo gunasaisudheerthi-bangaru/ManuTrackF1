@@ -45,8 +45,8 @@ export interface CreateTaskRequest {
 
 @Injectable({ providedIn: 'root' })
 export class WorkOrderService {
-  private readonly base = 'http://localhost:5000/api/v1/workorders';
-  private readonly taskBase = 'http://localhost:5000/api/v1/tasks';
+  private readonly base = '/api/v1/workorders';
+  private readonly taskBase = '/api/v1/tasks';
 
   constructor(private http: HttpClient) {}
 

@@ -22,7 +22,7 @@ export interface LoginResponse {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly apiUrl = 'http://localhost:5000/api/v1/auth';
+  private readonly apiUrl = '/api/v1/auth';
 
   constructor(private http: HttpClient) {}
 

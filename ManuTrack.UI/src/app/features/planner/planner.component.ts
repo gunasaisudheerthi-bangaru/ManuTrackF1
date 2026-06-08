@@ -315,7 +315,7 @@ export class PlannerComponent implements OnInit {
 
   get activeComponents() { return this.components.filter(c => c.isActive); }
 
-  /** Only components that are currently InStock or LowStock in Inventory (quantityOnHand > 0) */
+  /** Active components in stock */
   get componentsInInventory() {
     const inStockComponentIds = new Set(
       this.inventoryItems
@@ -328,6 +328,13 @@ export class PlannerComponent implements OnInit {
         .map(i => i.componentID!)
     );
     return this.activeComponents.filter(c => inStockComponentIds.has(c.componentID));
+  }
+
+  get isBomComponentDuplicate(): boolean {
+    const productId = +this.bomForm.get('productID')?.value;
+    const componentId = +this.bomForm.get('componentID')?.value;
+    if (!productId || !componentId) return false;
+    return (this.bomByProduct[productId] ?? []).some(b => b.componentID === componentId);
   }
 
   loadComponents(): void {

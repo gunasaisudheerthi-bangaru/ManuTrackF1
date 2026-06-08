@@ -76,6 +76,7 @@
               <option *ngIf="componentsInInventory.length === 0" disabled>No materials currently in stock</option>
             </select>
             <span class="field-err" *ngIf="bf['componentID'].invalid && bf['componentID'].touched">Required.</span>
+            <span class="field-err" *ngIf="isBomComponentDuplicate">This component is already in the BOM for this product.</span>
             <span style="font-size:11px;color:var(--muted);margin-top:3px;display:block">
               Don't see your material? <a style="color:var(--accent);cursor:pointer" (click)="closeBomModal(); showComponentModal=true; componentForm.reset()">Register it first →</a>
             </span></div>
@@ -88,7 +89,7 @@
       </div>
       <div class="modal-foot">
         <button type="button" class="t-btn" (click)="closeBomModal()">{{ bomSuccessMsg ? 'Close' : 'Cancel' }}</button>
-        <button type="submit" class="t-btn t-btn-primary" *ngIf="!bomSuccessMsg" [disabled]="bomCreateLoading">{{ bomCreateLoading ? 'Adding…' : 'Add BOM Entry' }}</button>
+        <button type="submit" class="t-btn t-btn-primary" *ngIf="!bomSuccessMsg" [disabled]="bomCreateLoading || isBomComponentDuplicate">{{ bomCreateLoading ? 'Adding…' : 'Add BOM Entry' }}</button>
       </div>
     </form>
   </div>

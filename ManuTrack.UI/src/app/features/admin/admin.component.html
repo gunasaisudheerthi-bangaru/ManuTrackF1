@@ -1815,6 +1815,7 @@
             <div class="page-title">Notifications</div>
             <div class="page-sub">System notifications</div>
           </div>
+          <button class="t-btn" style="background:var(--accent);color:#fff;font-weight:600" (click)="showBroadcastModal=true">📢 Broadcast</button>
         </div>
         <div class="summary-strip" style="grid-template-columns:repeat(1,1fr)">
           <div class="sum-card"><div class="sum-accent" style="background:var(--accent)"></div><div class="sum-label">Total</div><div class="sum-val">{{ notifications.length }}</div></div>
@@ -1844,6 +1845,46 @@
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Broadcast Modal -->
+      <div class="modal-overlay" *ngIf="showBroadcastModal" (click)="showBroadcastModal=false">
+        <div class="modal" (click)="$event.stopPropagation()">
+          <div class="modal-head">
+            <div>
+              <div class="modal-title">📢 Broadcast Notification</div>
+              <div class="modal-subtitle">Send a message to all active users</div>
+            </div>
+            <button class="modal-close" (click)="showBroadcastModal=false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+          <form [formGroup]="broadcastForm" (ngSubmit)="broadcastNotification()">
+            <div class="modal-body">
+              <div class="form-row">
+                <label class="form-label">TITLE <span class="req">*</span></label>
+                <input class="form-input" formControlName="title" placeholder="e.g. System Maintenance" />
+                <span class="field-err" *ngIf="brf['title'].invalid && brf['title'].touched">Title is required (min 3 chars).</span>
+              </div>
+              <div class="form-row">
+                <label class="form-label">MESSAGE <span class="req">*</span></label>
+                <textarea class="form-input" formControlName="message" rows="3" placeholder="e.g. System will be under maintenance at 14:00 hrs. Please save your work."></textarea>
+                <span class="field-err" *ngIf="brf['message'].invalid && brf['message'].touched">Message is required (min 5 chars).</span>
+              </div>
+              <div class="form-row">
+                <label class="form-label">PRIORITY</label>
+                <select class="form-input" formControlName="priority">
+                  <option value="Normal">Normal</option>
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                </select>
+              </div>
+            </div>
+            <div class="modal-foot">
+              <button type="button" class="btn-cancel" (click)="showBroadcastModal=false">Cancel</button>
+              <button type="submit" class="btn-primary" [disabled]="broadcastLoading">{{ broadcastLoading ? 'Sending…' : 'Send Broadcast' }}</button>
+            </div>
+          </form>
         </div>
       </div>
 

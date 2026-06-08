@@ -93,6 +93,9 @@ export class AdminComponent implements OnInit {
   poLoading2 = false; adjustLoading = false; supplierLoading = false;
   notifications: NotificationViewModel[] = [];
   unreadCount = 0;
+  showBroadcastModal = false;
+  broadcastForm!: FormGroup;
+  broadcastLoading = false;
 
   // ── Quality (read-only) ──────────────────────────────
   inspections: InspectionViewModel[] = [];
@@ -258,6 +261,12 @@ export class AdminComponent implements OnInit {
       quantity: ['', [Validators.required, Validators.min(0.0001)]],
       version: ['1.0', [Validators.required, Validators.pattern(/^\d+\.\d+(\.\d+)?$/)]],
       notes: ['']
+    });
+
+    this.broadcastForm = this.fb.group({
+      title: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(100)]],
+      message: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(500)]],
+      priority: ['Normal', Validators.required]
     });
   }
 
@@ -959,6 +968,25 @@ export class AdminComponent implements OnInit {
       next: () => { this.showToast('Old notifications cleaned up.'); this.loadNotifications(); },
       error: err => this.showToast(err.error?.message ?? 'Failed.', 'error')
     });
+  }
+
+  get brf() { return this.broadcastForm.controls; }
+
+  broadcastNotification(): void {
+    if (this.broadcastForm.invalid) { this.broadcastForm.markAllAsTouched(); return; }
+    this.broadcastLoading = true;
+    const v = this.broadcastForm.value;
+    this.notificationSvc.broadcast({ title: v.title, message: v.message, priority: v.priority })
+      .subscribe({
+        next: () => {
+          this.broadcastLoading = false;
+          this.showBroadcastModal = false;
+          this.broadcastForm.reset({ priority: 'Normal' });
+          this.showToast('Broadcast sent to all users.');
+          this.loadNotifications();
+        },
+        error: err => { this.broadcastLoading = false; this.showToast(err.error?.message ?? 'Failed to broadcast.', 'error'); }
+      });
   }
 
   notifPriorityBadge(p: string): string {

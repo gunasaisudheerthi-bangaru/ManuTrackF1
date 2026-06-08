@@ -87,6 +87,8 @@ export class PlannerComponent implements OnInit {
   productLoading = false;
   bomCreateLoading = false;
   workOrderLoading = false;
+  woStockError = '';
+  stockShortfalls: { component: string; required: number; available: number; unit: string }[] = [];
   taskLoading = false;
   kpiLoading = false;
   componentCreateLoading = false;
@@ -315,19 +317,9 @@ export class PlannerComponent implements OnInit {
 
   get activeComponents() { return this.components.filter(c => c.isActive); }
 
-  /** Only components that are currently InStock or LowStock in Inventory (quantityOnHand > 0) */
+  /** All active components — BOM is a product definition, independent of current stock levels */
   get componentsInInventory() {
-    const inStockComponentIds = new Set(
-      this.inventoryItems
-        .filter(i =>
-          i.itemType === 'RawMaterial' &&
-          i.componentID != null &&
-          i.status !== 'OutOfStock' &&
-          i.quantityOnHand > 0
-        )
-        .map(i => i.componentID!)
-    );
-    return this.activeComponents.filter(c => inStockComponentIds.has(c.componentID));
+    return this.activeComponents;
   }
 
   loadComponents(): void {
@@ -431,12 +423,35 @@ export class PlannerComponent implements OnInit {
 
   createWorkOrder(): void {
     if (this.workOrderForm.invalid) { this.workOrderForm.markAllAsTouched(); return; }
-    this.workOrderLoading = true;
+
     const v = this.workOrderForm.value;
-    const product = this.products.find(p => p.productID === +v.productID);
+    const productId = +v.productID;
+    const woQty = +v.quantity;
+
+    // Check BOM components against inventory stock
+    const bomForProduct = this.bomByProduct[productId] ?? [];
+    const shortfalls = bomForProduct
+      .map(bom => {
+        const required = bom.quantity * woQty;
+        const invItem = this.inventoryItems.find(i => i.componentID === bom.componentID);
+        const available = invItem?.quantityOnHand ?? 0;
+        return { component: bom.componentName, required, available, unit: bom.componentUnit };
+      })
+      .filter(s => s.available < s.required);
+
+    if (shortfalls.length > 0) {
+      this.woStockError = 'Insufficient stock for the following BOM components:';
+      this.stockShortfalls = shortfalls;
+      return;
+    }
+
+    this.woStockError = '';
+    this.stockShortfalls = [];
+    this.workOrderLoading = true;
+    const product = this.products.find(p => p.productID === productId);
     this.workOrderSvc.create({
-      productID: +v.productID, productName: product?.name ?? '',
-      quantity: +v.quantity,
+      productID: productId, productName: product?.name ?? '',
+      quantity: woQty,
       startDate: new Date(v.startDate).toISOString(),
       endDate: new Date(v.endDate).toISOString()
     }).subscribe({

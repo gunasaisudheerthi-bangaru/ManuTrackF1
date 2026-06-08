@@ -193,8 +193,13 @@
           <input class="form-input" formControlName="description" placeholder="e.g. Cut steel tubes to size">
           <span class="field-err" *ngIf="tf['description'].invalid && tf['description'].touched">Min 5 chars.</span></div>
         <div class="form-field"><label>Assign To</label>
-          <input class="form-input" formControlName="assignedTo" placeholder="e.g. Arjun Kumar (Operator)">
-          <span class="field-err" *ngIf="tf['assignedTo'].invalid && tf['assignedTo'].touched">Required.</span></div>
+          <select class="form-input" formControlName="assignedTo">
+            <option value="">Select operator…</option>
+            <option *ngFor="let op of operatorsList" [value]="op.name">{{ op.name }}</option>
+          </select>
+          <span class="field-err" *ngIf="tf['assignedTo'].invalid && tf['assignedTo'].touched">Required.</span>
+          <span *ngIf="operatorsList.length === 0" style="font-size:11px;color:var(--muted)">No active operators found.</span>
+        </div>
         <div class="form-field"><label>Notes <span style="color:var(--muted2);font-weight:400">(optional)</span></label>
           <input class="form-input" formControlName="notes" placeholder="Any notes…"></div>
       </div></div>
@@ -291,11 +296,10 @@
           <div class="u-name">{{ userName }}</div>
           <div class="u-role">Planner</div>
         </div>
+        <button class="signout-btn" (click)="logout()" title="Sign Out">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
       </div>
-      <button class="signout-btn" (click)="logout()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        Sign Out
-      </button>
     </div>
   </aside>
 

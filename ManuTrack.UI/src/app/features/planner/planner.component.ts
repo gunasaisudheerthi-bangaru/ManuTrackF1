@@ -53,6 +53,9 @@ export class PlannerComponent implements OnInit {
   analyticsLoading = false; analyticsError = '';
   notificationsLoading = false;
 
+  // Operators list for task assignment
+  operatorsList: { userID: number; name: string }[] = [];
+
   // Modals
   showProductModal = false;
   showBomModal = false;
@@ -167,6 +170,21 @@ export class PlannerComponent implements OnInit {
     this.loadAnalytics();
     this.loadNotifications();
     this.loadQuality();
+    this.loadOperators();
+  }
+
+  loadOperators(): void {
+    this.http.get<any>('http://localhost:5000/api/v1/auth/users/by-role/Operator')
+      .pipe(timeout(10000))
+      .subscribe({
+        next: res => {
+          const all = res?.data ?? [];
+          this.operatorsList = all
+            .filter((u: any) => u.isActive)
+            .map((u: any) => ({ userID: u.userID, name: u.name }));
+        },
+        error: () => {}
+      });
   }
 
   get sectionTitle(): string {
@@ -395,7 +413,6 @@ export class PlannerComponent implements OnInit {
 
   get inProgressCount() { return this.workOrders.filter(w => w.status === 'InProgress').length; }
   get overdueCount()    { return this.workOrders.filter(w => w.isOverdue).length; }
-  get operators()       { return []; } // planner assigns by name
 
   loadWorkOrders(): void {
     this.workOrdersLoading = true;

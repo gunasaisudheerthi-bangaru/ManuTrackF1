@@ -140,12 +140,12 @@ export class InventoryManagerComponent implements OnInit {
     if (this.poNotifying[po.poid]) return;
     this.poNotifying[po.poid] = true;
     const item = po.items?.[0];
-    this.http.post<any>('http://localhost:5000/api/v1/notifications/broadcast', {
+    this.http.post<any>('http://localhost:5000/api/v1/notifications/notify-role', {
+      targetRole: 'Admin',
       title: `PO-${po.poid} Approval Required`,
       message: `Purchase Order PO-${po.poid} from ${po.supplierName} for ${item?.productName ?? 'items'} (Qty: ${item?.quantity ?? '—'}, ₹${po.totalAmount?.toFixed(2)}) requires your approval.`,
       category: 'Inventory',
-      priority: 'High',
-      targetRole: 'Admin'
+      priority: 'High'
     }).pipe(timeout(8000), finalize(() => { this.poNotifying[po.poid] = false; this.cdr.detectChanges(); }))
       .subscribe({
         next: () => this.showToast(`✓ Admin notified for PO-${po.poid} approval.`),

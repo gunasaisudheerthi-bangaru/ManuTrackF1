@@ -126,6 +126,40 @@ public class NotificationServiceImpl(
             $"Broadcast sent to {request.UserIDs.Count} users.");
     }
 
+    public async Task<ApiResponse<IEnumerable<NotificationViewModel>>> NotifyRoleAsync(NotifyRoleRequest request)
+    {
+        var client = ServiceHelper.CreateAuthorizedClient(httpClientFactory, httpContextAccessor, "AuthService");
+        var response = await client.GetFromJsonAsync<ApiResponse<List<UserIdDto>>>(
+            $"api/v1/auth/users/by-role/{request.TargetRole}");
+
+        var userIds = response?.Data?.Select(u => u.UserID).ToList() ?? [];
+        if (userIds.Count == 0)
+            return ApiResponse<IEnumerable<NotificationViewModel>>.Ok([], $"No active users found with role '{request.TargetRole}'.");
+
+        var expiry = GetExpiryDate(request.Category);
+        var notifications = userIds.Select(uid => new Notification
+        {
+            UserID = uid,
+            Title = request.Title,
+            Message = request.Message,
+            Category = request.Category,
+            Priority = request.Priority,
+            Status = NotificationStatus.Unread,
+            ExpiryDate = expiry,
+            CreatedDate = DateTime.UtcNow
+        });
+
+        var created = await repo.CreateBulkAsync(notifications);
+
+        await LogAuditAsync("Notify Role", "Notification",
+            string.Join(",", userIds),
+            $"Role: {request.TargetRole}, Category: {request.Category}, Recipients: {userIds.Count}");
+
+        return ApiResponse<IEnumerable<NotificationViewModel>>.Ok(
+            created.Select(Map),
+            $"Notification sent to {userIds.Count} user(s) with role '{request.TargetRole}'.");
+    }
+
     public async Task<ApiResponse<NotificationViewModel>> MarkAsReadAsync(int id)
     {
         var n = await repo.GetByIdAsync(id)

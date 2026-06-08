@@ -58,6 +58,14 @@ public class NotificationController(INotificationService service) : ControllerBa
         return Ok(await service.BroadcastAsync(request));
     }
 
+    [HttpPost("notify-role")]
+    [Authorize(Roles = "Admin,Planner,InventoryManager,QualityInspector,ComplianceOfficer,Operator")]
+    public async Task<ActionResult<ApiResponse<IEnumerable<NotificationViewModel>>>> NotifyRole(
+        [FromBody] NotifyRoleRequest request)
+    {
+        return Ok(await service.NotifyRoleAsync(request));
+    }
+
     [HttpPut("{id:int}/read")]
     public async Task<ActionResult<ApiResponse<NotificationViewModel>>> MarkRead(int id)
     {

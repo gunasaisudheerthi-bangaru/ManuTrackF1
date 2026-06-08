@@ -10,6 +10,7 @@ public interface INotificationService
     Task<ApiResponse<NotificationViewModel>> GetByIdAsync(int id);
     Task<ApiResponse<NotificationViewModel>> SendAsync(SendNotificationRequest request);
     Task<ApiResponse<IEnumerable<NotificationViewModel>>> BroadcastAsync(BroadcastNotificationRequest request);
+    Task<ApiResponse<IEnumerable<NotificationViewModel>>> NotifyRoleAsync(NotifyRoleRequest request);
     Task<ApiResponse<NotificationViewModel>> MarkAsReadAsync(int id);
     Task<ApiResponse> MarkAllAsReadAsync(int userId);
     // Change 4: returns breakdown by category

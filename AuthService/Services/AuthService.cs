@@ -101,6 +101,13 @@ public class AuthServiceImpl : IAuthService
             users.Select(MapToViewModel).ToList());
     }
 
+    public async Task<ApiResponse<List<AuthUserViewModel>>> GetUsersByRoleAsync(string role)
+    {
+        var users = await _repo.GetByRoleAsync(role);
+        return ApiResponse<List<AuthUserViewModel>>.Ok(
+            users.Select(MapToViewModel).ToList());
+    }
+
     // ── CHANGE PASSWORD ───────────────────────────────────────────────────────
     public async Task<ApiResponse> ChangePasswordAsync(int userId, ChangePasswordRequest request)
     {

@@ -15,12 +15,6 @@ export interface NotificationViewModel {
   readDate?: string;
 }
 
-export interface BroadcastNotificationRequest {
-  userIDs: number[];
-  title: string;
-  message: string;
-  category: string;
-}
 
 @Injectable({ providedIn: 'root' })
 export class NotificationAdminService {
@@ -30,10 +24,6 @@ export class NotificationAdminService {
 
   getAll(): Observable<ApiResponse<NotificationViewModel[]>> {
     return this.http.get<ApiResponse<NotificationViewModel[]>>(this.base);
-  }
-
-  broadcast(req: BroadcastNotificationRequest): Observable<ApiResponse<any>> {
-    return this.http.post<ApiResponse<any>>(`${this.base}/broadcast`, req);
   }
 
   cleanup(): Observable<ApiResponse<any>> {

@@ -92,6 +92,7 @@ export class AdminComponent implements OnInit {
   poForm!: FormGroup; adjustForm!: FormGroup; supplierForm!: FormGroup;
   poLoading2 = false; adjustLoading = false; supplierLoading = false;
   notifications: NotificationViewModel[] = [];
+  unreadCount = 0;
 
   // ── Quality (read-only) ──────────────────────────────
   inspections: InspectionViewModel[] = [];
@@ -130,13 +131,10 @@ export class AdminComponent implements OnInit {
   taskForm!: FormGroup;
   taskLoading = false;
   showInventoryModal = false;
-  showBroadcastModal = false;
   workOrderForm!: FormGroup;
   inventoryForm!: FormGroup;
-  broadcastForm!: FormGroup;
   workOrderLoading = false;
   inventoryCreateLoading = false;
-  broadcastLoading = false;
 
   toastMsg = '';
   toastType: 'success' | 'error' = 'success';
@@ -255,13 +253,6 @@ export class AdminComponent implements OnInit {
       quantityOnHand: ['', [Validators.required, Validators.min(0)]],
       minimumQuantity: ['', [Validators.required, Validators.min(0)]],
       notes: ['']
-    });
-
-    this.broadcastForm = this.fb.group({
-      title: ['', [Validators.required, Validators.minLength(2)]],
-      message: ['', [Validators.required, Validators.minLength(5)]],
-      category: ['General', Validators.required],
-      sendToAll: [true]
     });
 
     this.bomForm = this.fb.group({
@@ -978,30 +969,9 @@ export class AdminComponent implements OnInit {
     this.notificationSvc.getAll()
       .pipe(timeout(10000), finalize(() => { this.notificationsLoading = false; this.cdr.detectChanges(); }))
       .subscribe({
-        next: res => { this.notifications = res?.data ?? []; this.cdr.detectChanges(); },
+        next: res => { this.notifications = res?.data ?? []; this.unreadCount = this.notifications.filter(n => n.status !== 'Read').length; this.cdr.detectChanges(); },
         error: err => { this.notificationsError = err.status === 0 ? 'Cannot connect to NotificationService.' : err.error?.message ?? 'Failed to load notifications.'; }
       });
-  }
-
-  get brf() { return this.broadcastForm.controls; }
-
-  broadcastNotification(): void {
-    if (this.broadcastForm.invalid) { this.broadcastForm.markAllAsTouched(); return; }
-    this.broadcastLoading = true;
-    const v = this.broadcastForm.value;
-    const req = {
-      userIDs: this.users.filter(u => u.isActive).map(u => u.userID),
-      title: v.title, message: v.message, category: v.category
-    };
-    this.notificationSvc.broadcast(req).subscribe({
-      next: () => {
-        this.broadcastLoading = false; this.showBroadcastModal = false;
-        this.broadcastForm.reset({ category: 'General', sendToAll: true });
-        this.showToast('Notification broadcast sent.');
-        this.loadNotifications();
-      },
-      error: err => { this.broadcastLoading = false; this.showToast(err.error?.message ?? 'Failed.', 'error'); }
-    });
   }
 
   cleanupNotifications(): void {
@@ -1050,21 +1020,10 @@ export class AdminComponent implements OnInit {
       .subscribe({
         next: (res) => {
           const createdComponent = res?.data;
-          // Auto-add to Inventory so it's available for stock tracking
-          if (createdComponent) {
-            this.inventorySvc.create({
-              itemType: 'RawMaterial',
-              componentID: createdComponent.componentID,
-              productName: createdComponent.name,
-              quantityOnHand: 0,
-              minimumQuantity: 0,
-              notes: `${createdComponent.materialType} Â· ${createdComponent.unit}`
-            }).subscribe({
-              next: () => this.loadInventory(),
-              error: () => {} // silently fail â€” component is still created
-            });
-          }
-          this.componentSuccess = `"${createdComponent?.name ?? v.name}" registered and added to Inventory.`;
+          // Inventory item is auto-created by the backend (ProductService → InventoryService).
+          // Just reload inventory here to reflect the new entry.
+          setTimeout(() => this.loadInventory(), 500);
+          this.componentSuccess = `”${createdComponent?.name ?? v.name}” registered and added to Inventory.`;
           this.componentForm.reset();
           this.loadComponents();
           this.ngZone.run(() => {
@@ -1319,6 +1278,41 @@ export class AdminComponent implements OnInit {
   logout(): void {
     this.auth.logout();
     this.router.navigate(['/login'], { replaceUrl: true });
+  }
+
+  // ── Change Password ──────────────────────────────────────────────────────
+  showChangePwModal = false;
+  changePwCurrentPassword = '';
+  changePwNewPassword = '';
+  changePwConfirmPassword = '';
+  changePwLoading = false;
+  changePwError = '';
+  changePwSuccess = '';
+
+  submitChangePassword(): void {
+    this.changePwError = '';
+    this.changePwSuccess = '';
+    if (!this.changePwCurrentPassword || !this.changePwNewPassword || !this.changePwConfirmPassword) {
+      this.changePwError = 'All fields are required.'; return;
+    }
+    if (this.changePwNewPassword.length < 6) {
+      this.changePwError = 'New password must be at least 6 characters.'; return;
+    }
+    if (this.changePwNewPassword !== this.changePwConfirmPassword) {
+      this.changePwError = 'New passwords do not match.'; return;
+    }
+    this.changePwLoading = true;
+    this.auth.changePassword(this.changePwCurrentPassword, this.changePwNewPassword).subscribe({
+      next: () => {
+        this.changePwLoading = false;
+        this.changePwSuccess = 'Password changed successfully!';
+        setTimeout(() => { this.showChangePwModal = false; this.changePwCurrentPassword = ''; this.changePwNewPassword = ''; this.changePwConfirmPassword = ''; this.changePwSuccess = ''; }, 1500);
+      },
+      error: (err: any) => {
+        this.changePwLoading = false;
+        this.changePwError = err?.error?.message ?? err?.error?.Message ?? 'Failed to change password.';
+      }
+    });
   }
 
   get f() { return this.registerForm.controls; }

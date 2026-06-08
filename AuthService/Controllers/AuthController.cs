@@ -38,7 +38,7 @@ public class AuthController : ControllerBase
     [HttpGet("users/by-role")]
     [Authorize]
     public async Task<IActionResult> GetUsersByRole([FromQuery] string role)
-    => Ok(await _authService.GetByRoleAsync(role));
+        => Ok(await _authService.GetUsersByRoleAsync(role));
 
     [HttpGet("users/{id:int}")]
     [Authorize]

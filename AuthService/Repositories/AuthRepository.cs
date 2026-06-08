@@ -27,6 +27,9 @@ public class AuthRepository : IAuthRepository
     public async Task<List<AuthUser>> GetAllAsync() =>
         await _db.Users.OrderBy(u => u.Name).ToListAsync();
 
+    public async Task<List<AuthUser>> GetByRoleAsync(string role) =>
+        await _db.Users.Where(u => u.Role == role && u.IsActive).OrderBy(u => u.Name).ToListAsync();
+
     public async Task<AuthUser> CreateAsync(AuthUser user)
     {
         _db.Users.Add(user);

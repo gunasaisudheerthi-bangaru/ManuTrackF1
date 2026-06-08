@@ -12,6 +12,7 @@ public interface IAuthService
     Task<ApiResponse<AuthUserViewModel>>   RegisterAsync(RegisterRequest request);
     Task<ApiResponse<AuthUserViewModel>>   GetByIdAsync(int id);
     Task<ApiResponse<List<AuthUserViewModel>>> GetAllAsync();
+    Task<ApiResponse<List<AuthUserViewModel>>> GetUsersByRoleAsync(string role);
     Task<ApiResponse>                      ChangePasswordAsync(int userId, ChangePasswordRequest request);
     Task<bool>                             EmailExistsAsync(string email);
     Task<ApiResponse>                      DeactivateUserAsync(int userId);

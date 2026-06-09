@@ -37,6 +37,9 @@ type Section = 'overview' | 'users' | 'products' | 'bom' | 'workorders' | 'inven
   styleUrl: './admin.component.css'
 })
 export class AdminComponent implements OnInit {
+  sidebarOpen = false;
+  toggleSidebar() { this.sidebarOpen = !this.sidebarOpen; }
+
   // Enum lists exposed to template
   readonly appRoles = AppRoles;
   readonly productStatuses = ProductStatuses;
@@ -287,6 +290,7 @@ export class AdminComponent implements OnInit {
 
   showSection(s: Section): void {
     this.activeSection = s;
+    this.sidebarOpen = false;
   }
 
   get sectionTitle(): string {

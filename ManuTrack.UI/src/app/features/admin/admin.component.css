@@ -1005,49 +1005,62 @@ input, select, textarea { font-family: var(--font); }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted2); }
 
+/* ─── HAMBURGER BUTTON ───────────────────────────────────── */
+.hamburger-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px; height: 36px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  flex-shrink: 0;
+  color: var(--text2);
+  transition: background 0.15s;
+  margin-right: 8px;
+}
+.hamburger-btn:hover { background: var(--surface3); }
+.hamburger-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+
+/* ─── SIDEBAR OVERLAY BACKDROP ───────────────────────────── */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(17,24,39,.45);
+  z-index: 199;
+  backdrop-filter: blur(2px);
+}
+
 /* ─── RESPONSIVE ─────────────────────────────────────── */
 
-/* Tablet: 768px */
-@media (max-width: 768px) {
-  /* Sidebar becomes hidden by default, show via toggle */
-  .shell { flex-direction: column; }
+/* Tablet & Mobile: max-width 1024px — sidebar becomes overlay */
+@media (max-width: 1024px) {
+  .hamburger-btn { display: flex; }
 
   .sidebar {
-    width: 100%;
-    height: auto;
-    min-height: unset;
-    position: static;
-    flex-direction: row;
-    flex-wrap: wrap;
-    overflow-y: unset;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
+    position: fixed;
+    left: 0; top: 0;
+    height: 100vh;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(.4,0,.2,1), box-shadow 0.25s;
+    box-shadow: none;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 4px 0 32px rgba(0,0,0,.18);
   }
 
-  .logo {
-    flex: 1;
-    height: 52px;
-    padding: 0 16px;
-  }
-
-  .nav {
-    width: 100%;
-    padding: 8px 10px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-  .nav-group { margin-bottom: 0; width: 100%; display: flex; flex-wrap: wrap; gap: 4px; }
-  .nav-group-label { display: none; }
-  .nav-item { padding: 6px 10px; font-size: 12px; }
-
-  .sidebar-footer { display: none; }
+  .sidebar-backdrop { display: block; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+  .sidebar-backdrop.open { opacity: 1; pointer-events: auto; }
 
   .topbar { padding: 0 16px; }
-
   .content { padding: 16px; }
 
-  /* Summary strip: keep inline style columns */
+  /* Summary strip: 2 columns on tablet */
+  .summary-strip { grid-template-columns: repeat(2, 1fr) !important; }
 
   /* Grid layouts: single column */
   .grid-2 { grid-template-columns: 1fr; }
@@ -1058,8 +1071,9 @@ input, select, textarea { font-family: var(--font); }
   .form-grid { grid-template-columns: 1fr; }
   .form-field[style*="grid-column"] { grid-column: 1 !important; }
 
-  /* Tables: horizontal scroll */
+  /* Tables: horizontal scroll — card and explicit wrapper */
   .card { overflow-x: auto; }
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .tbl { min-width: 600px; }
 
   /* Workflow banner: scroll */
@@ -1069,7 +1083,7 @@ input, select, textarea { font-family: var(--font); }
   /* PO guide: scroll */
   .po-workflow-guide { overflow-x: auto; }
 
-  /* Modal: full width */
+  /* Modal: bottom sheet */
   .modal { max-width: 100% !important; margin: 0; border-radius: 16px 16px 0 0; }
   .modal-overlay { align-items: flex-end; padding: 0; }
 
@@ -1095,17 +1109,22 @@ input, select, textarea { font-family: var(--font); }
   /* PO header: wrap */
   .po-header { flex-wrap: wrap; gap: 8px; }
   .po-amount { width: 100%; text-align: right; }
+
+  /* Analytics grids: 2 col */
+  .an-kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .an-charts-row { grid-template-columns: 1fr 1fr; }
+  .an-charts-row--2col { grid-template-columns: 1fr; }
 }
 
-/* Mobile: 480px */
-@media (max-width: 480px) {
-  .nav-item span { display: none; }
-  .nav-item svg { width: 18px; height: 18px; }
-  .nav-item { padding: 8px; }
+/* Mobile: max-width 768px */
+@media (max-width: 768px) {
+  /* dummy rule to keep block structure */
+  .shell { /* no-op */ }
 
-  /* Summary strip: keep inline style columns */
+  /* Summary strip: 1 column on mobile */
+  .summary-strip { grid-template-columns: 1fr !important; }
 
-  .topbar { height: 52px; }
+  .topbar { padding: 0 12px; height: 52px; }
   .breadcrumb-home { display: none; }
   .breadcrumb-sep { display: none; }
   .breadcrumb-current { font-size: 14px; }
@@ -1136,7 +1155,7 @@ input, select, textarea { font-family: var(--font); }
   /* PO items: stack */
   .po-item { flex-direction: column; align-items: flex-start; gap: 4px; }
 
-  /* Workflow banner: hidden on small mobile */
+  /* Workflow banner: hidden on mobile */
   .workflow-banner { display: none; }
 
   /* BOM layout: single col */
@@ -1144,6 +1163,11 @@ input, select, textarea { font-family: var(--font); }
 
   /* Status options: single col */
   .status-options { gap: 6px; }
+
+  /* Analytics grids: 1 col */
+  .an-kpi-row { grid-template-columns: 1fr 1fr; }
+  .an-charts-row { grid-template-columns: 1fr; }
+  .an-charts-row--2col { grid-template-columns: 1fr; }
 }
 
 /* ══════════════════════════════════════════════════════

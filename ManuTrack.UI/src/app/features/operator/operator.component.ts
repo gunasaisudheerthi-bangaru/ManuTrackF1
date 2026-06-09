@@ -20,6 +20,9 @@ type Section = 'overview' | 'tasks' | 'products' | 'notifications';
   styleUrl: './operator.component.css'
 })
 export class OperatorComponent implements OnInit {
+  sidebarOpen = false;
+  toggleSidebar() { this.sidebarOpen = !this.sidebarOpen; }
+
   activeSection: Section = 'overview';
   userName: string;
   userInitials: string;
@@ -99,7 +102,7 @@ export class OperatorComponent implements OnInit {
     return count;
   }
 
-  showSection(s: Section): void { this.activeSection = s; }
+  showSection(s: Section): void { this.activeSection = s; this.sidebarOpen = false; }
 
   // â”€â”€ MY TASKS (view WO + update task status) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   loadWorkOrders(): void {

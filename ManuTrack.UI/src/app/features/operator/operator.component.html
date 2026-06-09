@@ -12,9 +12,12 @@
   </button>
 </div>
 
+<!-- Sidebar backdrop overlay (mobile/tablet) -->
+<div class="sidebar-backdrop" [class.open]="sidebarOpen" (click)="toggleSidebar()"></div>
+
 <div class="shell">
   <!-- SIDEBAR -->
-  <aside class="sidebar">
+  <aside class="sidebar" [class.open]="sidebarOpen">
     <div class="logo">
       <div class="logo-row">
         <div class="logo-sq">MT</div>
@@ -64,6 +67,9 @@
   <!-- MAIN -->
   <div class="main">
     <header class="topbar">
+      <button class="hamburger-btn" (click)="toggleSidebar()" aria-label="Toggle sidebar">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
       <div class="breadcrumb">
         <span class="breadcrumb-home">ManuTrack</span>
         <span class="breadcrumb-sep">›</span>

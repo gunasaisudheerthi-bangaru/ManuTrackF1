@@ -19,6 +19,9 @@ type Section = 'overview' | 'inspections' | 'defects' | 'workorders' | 'products
   styleUrl: './quality-inspector.component.css'
 })
 export class QualityInspectorComponent implements OnInit {
+  sidebarOpen = false;
+  toggleSidebar() { this.sidebarOpen = !this.sidebarOpen; }
+
   activeSection: Section = 'overview';
   userName: string;
   userInitials: string;
@@ -110,7 +113,7 @@ export class QualityInspectorComponent implements OnInit {
     const m: Record<Section,string> = { overview:'Overview', inspections:'Inspections', defects:'Defects', workorders:'Work Orders', products:'Products & BOM', analytics:'Analytics', notifications:'Notifications' };
     return m[this.activeSection];
   }
-  showSection(s: Section): void { this.activeSection = s; }
+  showSection(s: Section): void { this.activeSection = s; this.sidebarOpen = false; }
 
   // ── Products (read-only) ─────────────────────────────
   loadProducts(): void {

@@ -25,6 +25,9 @@ type Section = 'overview' | 'products' | 'workorders' | 'inventory' | 'quality' 
   styleUrl: './planner.component.css'
 })
 export class PlannerComponent implements OnInit {
+  sidebarOpen = false;
+  toggleSidebar() { this.sidebarOpen = !this.sidebarOpen; }
+
   activeSection: Section = 'overview';
 
   userName: string;
@@ -201,7 +204,7 @@ export class PlannerComponent implements OnInit {
     return map[this.activeSection];
   }
 
-  showSection(s: Section): void { this.activeSection = s; }
+  showSection(s: Section): void { this.activeSection = s; this.sidebarOpen = false; }
 
   // -- Quality (read-only) ------------------------------
   loadQuality(): void {

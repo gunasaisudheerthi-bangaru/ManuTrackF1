@@ -26,6 +26,9 @@ type InvTab = 'items' | 'po' | 'suppliers';
   styleUrl: './inventory-manager.component.css'
 })
 export class InventoryManagerComponent implements OnInit {
+  sidebarOpen = false;
+  toggleSidebar() { this.sidebarOpen = !this.sidebarOpen; }
+
   activeSection: Section = 'overview';
   inventoryTab: InvTab = 'items';
   stockTab: 'components' | 'finished' = 'components';
@@ -133,7 +136,7 @@ export class InventoryManagerComponent implements OnInit {
     const m: Record<Section,string> = { overview:'Overview', inventory:'Inventory & Stock', products:'Products & BOM', workorders:'Work Orders', analytics:'Analytics', notifications:'Notifications' };
     return m[this.activeSection];
   }
-  showSection(s: Section): void { this.activeSection = s; }
+  showSection(s: Section): void { this.activeSection = s; this.sidebarOpen = false; }
 
   // ── Auto-notify Admin after PO creation ─────────────
   private notifyAdminNewPO(po: PurchaseOrderViewModel): void {

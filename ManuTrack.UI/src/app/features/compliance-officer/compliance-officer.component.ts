@@ -36,6 +36,8 @@ type Section = 'overview' | 'reports' | 'audit' | 'quality' | 'workorders' | 'pr
   styleUrl: './compliance-officer.component.css'
 })
 export class ComplianceOfficerComponent implements OnInit, AfterViewInit, OnDestroy {
+  sidebarOpen = false;
+  toggleSidebar() { this.sidebarOpen = !this.sidebarOpen; }
 
   // ── Chart canvas refs ─────────────────────────────────
   @ViewChild('woStatusChart')    woStatusCanvasRef!: ElementRef<HTMLCanvasElement>;
@@ -300,6 +302,7 @@ export class ComplianceOfficerComponent implements OnInit, AfterViewInit, OnDest
   }
   showSection(s: Section): void {
     this.activeSection = s;
+    this.sidebarOpen = false;
     if (s === 'analytics') { this.buildCharts(); }
   }
 

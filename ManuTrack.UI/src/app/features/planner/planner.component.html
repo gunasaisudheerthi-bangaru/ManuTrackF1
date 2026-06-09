@@ -73,7 +73,7 @@
             <select class="form-input" formControlName="componentID">
               <option value="">Select material…</option>
               <option *ngFor="let c of componentsInInventory" [value]="c.componentID">{{ c.name }} ({{ c.unit }}) — {{ c.materialType }}</option>
-              <option *ngIf="componentsInInventory.length === 0" disabled>No materials currently in stock</option>
+              <option *ngIf="componentsInInventory.length === 0" disabled>No materials registered</option>
             </select>
             <span class="field-err" *ngIf="bf['componentID'].invalid && bf['componentID'].touched">Required.</span>
             <span class="field-err" *ngIf="isBomComponentDuplicate">This component is already in the BOM for this product.</span>
@@ -146,11 +146,11 @@
 </div>
 
 <!-- Create Work Order -->
-<div class="modal-overlay" *ngIf="showWorkOrderModal" (click)="showWorkOrderModal=false">
+<div class="modal-overlay" *ngIf="showWorkOrderModal" (click)="showWorkOrderModal=false; woStockError=''; stockShortfalls=[]">
   <div class="modal" style="max-width:500px" (click)="$event.stopPropagation()">
     <div class="modal-head">
       <div><div class="modal-title">Create Work Order</div><div class="modal-subtitle">Schedule a manufacturing work order</div></div>
-      <button class="modal-close" (click)="showWorkOrderModal=false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button class="modal-close" (click)="showWorkOrderModal=false; woStockError=''; stockShortfalls=[]"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <form [formGroup]="workOrderForm" (ngSubmit)="createWorkOrder()">
       <div class="modal-body"><div class="form-grid">
@@ -172,9 +172,33 @@
         <div class="form-field"><label>End Date</label>
           <input class="form-input" formControlName="endDate" type="date">
           <span class="field-err" *ngIf="wf['endDate'].invalid && wf['endDate'].touched">Required.</span></div>
-      </div></div>
+      </div>
+        <div *ngIf="woStockError" style="margin-top:12px;padding:12px 14px;background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;font-size:13px">
+          <div style="font-weight:600;color:#dc2626;margin-bottom:8px">{{ woStockError }}</div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="color:#6b7280;text-align:left">
+              <th style="padding:2px 8px 4px 0">Component</th>
+              <th style="padding:2px 8px 4px 0;text-align:right">Required</th>
+              <th style="padding:2px 8px 4px 0;text-align:right">In Stock</th>
+            </tr></thead>
+            <tbody>
+              <tr *ngFor="let s of stockShortfalls" style="color:#dc2626">
+                <td style="padding:2px 8px 2px 0">{{ s.component }}</td>
+                <td style="padding:2px 8px 2px 0;text-align:right">{{ s.required }} {{ s.unit }}</td>
+                <td style="padding:2px 8px 2px 0;text-align:right">{{ s.available }} {{ s.unit }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+            <button type="button" class="t-btn t-btn-primary" style="font-size:12px;padding:6px 14px" (click)="notifyInventoryManager()" [disabled]="stockNotifyLoading || stockNotifySent">
+              {{ stockNotifyLoading ? 'Sending…' : stockNotifySent ? '✓ Inventory Manager Notified' : 'Notify Inventory Manager' }}
+            </button>
+            <span *ngIf="stockNotifySent" style="font-size:12px;color:#16a34a">They will receive a restock request with the full shortfall details.</span>
+          </div>
+        </div>
+      </div>
       <div class="modal-foot">
-        <button type="button" class="t-btn" (click)="showWorkOrderModal=false">Cancel</button>
+        <button type="button" class="t-btn" (click)="showWorkOrderModal=false; woStockError=''; stockShortfalls=[]">Cancel</button>
         <button type="submit" class="t-btn t-btn-primary" [disabled]="workOrderLoading">{{ workOrderLoading ? 'Creating…' : 'Create Work Order' }}</button>
       </div>
     </form>
@@ -495,7 +519,7 @@
             <div class="page-title">Work Orders</div>
             <div class="page-sub">Create and manage manufacturing work orders and tasks</div>
           </div>
-          <button class="t-btn t-btn-primary" (click)="showWorkOrderModal=true; workOrderForm.reset()">+ Create Work Order</button>
+          <button class="t-btn t-btn-primary" (click)="showWorkOrderModal=true; workOrderForm.reset(); woStockError=''; stockShortfalls=[]; stockNotifySent=false">+ Create Work Order</button>
         </div>
         <div class="summary-strip" style="grid-template-columns:repeat(4,1fr)">
           <div class="sum-card"><div class="sum-accent" style="background:var(--accent)"></div><div class="sum-label">Total</div><div class="sum-val">{{ workOrders.length }}</div></div>

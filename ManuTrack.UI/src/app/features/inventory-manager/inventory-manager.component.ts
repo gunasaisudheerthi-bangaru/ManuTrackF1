@@ -28,6 +28,7 @@ type InvTab = 'items' | 'po' | 'suppliers';
 export class InventoryManagerComponent implements OnInit {
   activeSection: Section = 'overview';
   inventoryTab: InvTab = 'items';
+  stockTab: 'components' | 'finished' = 'components';
 
   userName: string;
   userInitials: string;
@@ -112,7 +113,7 @@ export class InventoryManagerComponent implements OnInit {
 
     this.supplierForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(2)]],
-      contactPerson: [''], phone: [''],
+      contactPerson: [''], phone: ['', Validators.pattern(/^[0-9]{10}$/)],
       email: ['', Validators.email], address: ['']
     });
   }
@@ -134,22 +135,15 @@ export class InventoryManagerComponent implements OnInit {
   }
   showSection(s: Section): void { this.activeSection = s; }
 
-  // ── Send PO approval notification to Admin ─────────────
-  poNotifying: Record<number, boolean> = {};
-  sendPOApprovalNotification(po: PurchaseOrderViewModel): void {
-    if (this.poNotifying[po.poid]) return;
-    this.poNotifying[po.poid] = true;
+  // ── Auto-notify Admin after PO creation ─────────────
+  private notifyAdminNewPO(po: PurchaseOrderViewModel): void {
     const item = po.items?.[0];
     this.http.post<any>('/api/v1/notifications/broadcast', {
       title: `PO-${po.poid} Approval Required`,
       message: `Purchase Order PO-${po.poid} from ${po.supplierName} for ${item?.productName ?? 'items'} (Qty: ${item?.quantity ?? '—'}, ₹${po.totalAmount?.toFixed(2)}) requires your approval.`,
       category: 'Inventory',
       priority: 'High'
-    }).pipe(timeout(8000), finalize(() => { this.poNotifying[po.poid] = false; this.cdr.detectChanges(); }))
-      .subscribe({
-        next: () => this.showToast(`✓ Admin notified for PO-${po.poid} approval.`),
-        error: () => this.showToast('Failed to send notification.', 'error')
-      });
+    }).pipe(timeout(8000)).subscribe();
   }
 
   // ── Analytics computed stats ──────────────────────────
@@ -201,6 +195,10 @@ export class InventoryManagerComponent implements OnInit {
   get pof() { return this.poForm.controls; }
   get sf()  { return this.supplierForm.controls; }
 
+  get componentItems()    { return this.inventoryItems.filter(i => i.itemType !== 'Product'); }
+  get finishedItems()     { return this.inventoryItems.filter(i => i.itemType === 'Product'); }
+  get visibleStockItems() { return this.stockTab === 'components' ? this.componentItems : this.finishedItems; }
+
   get inStockCount()    { return this.inventoryItems.filter(i => i.status==='InStock').length; }
   get lowStockCount()   { return this.inventoryItems.filter(i => i.status==='LowStock').length; }
   get outOfStockCount() { return this.inventoryItems.filter(i => i.status==='OutOfStock').length; }
@@ -217,7 +215,16 @@ export class InventoryManagerComponent implements OnInit {
   onInventoryProductSelect(event: Event): void {
     const id = +(event.target as HTMLSelectElement).value;
     const p = this.products.find(x => x.productID === id);
-    if (p) this.inventoryForm.patchValue({ productName: p.name });
+    if (p) {
+      this.inventoryForm.patchValue({ productName: p.name });
+      // Autofill qty from completed work orders for this product
+      const completedQty = this.workOrders
+        .filter(w => w.productID === id && w.status === 'Completed')
+        .reduce((sum, w) => sum + w.quantity, 0);
+      if (completedQty > 0) {
+        this.inventoryForm.patchValue({ quantityOnHand: completedQty });
+      }
+    }
   }
 
   onInventoryComponentSelect(event: Event): void {
@@ -349,8 +356,11 @@ export class InventoryManagerComponent implements OnInit {
       next: res => {
         this.poCreateLoading = false; this.showPOModal = false; this.poForm.reset();
         this.showToast('Purchase order created.');
-        if (res?.data) { this.purchaseOrders = [res.data, ...this.purchaseOrders]; this.cdr.detectChanges(); }
-        else this.loadPurchaseOrders();
+        if (res?.data) {
+          this.purchaseOrders = [res.data, ...this.purchaseOrders];
+          this.notifyAdminNewPO(res.data);
+          this.cdr.detectChanges();
+        } else this.loadPurchaseOrders();
       },
       error: err => { this.poCreateLoading = false; this.showToast(err.error?.message ?? 'Failed.', 'error'); }
     });

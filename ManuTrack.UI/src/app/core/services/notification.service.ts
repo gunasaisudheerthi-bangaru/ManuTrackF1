@@ -29,4 +29,12 @@ export class NotificationAdminService {
   cleanup(): Observable<ApiResponse<any>> {
     return this.http.delete<ApiResponse<any>>(`${this.base}/cleanup`);
   }
+
+  broadcast(req: { title: string; message: string; priority: string }): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${this.base}/broadcast`, req);
+  }
+
+  notifyRole(req: { targetRole: string; title: string; message: string; category: string; priority: string }): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${this.base}/notify-role`, req);
+  }
 }

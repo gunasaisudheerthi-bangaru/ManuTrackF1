@@ -68,6 +68,10 @@ builder.Services.AddHttpClient("NotificationService", client =>
     client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:NotificationService"]!));
 builder.Services.AddHttpClient("QualityService", client =>
     client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:QualityService"]!));
+builder.Services.AddHttpClient("ProductService", client =>
+    client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:ProductService"]!));
+builder.Services.AddHttpClient("InventoryService", client =>
+    client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:InventoryService"]!));
 
 builder.Services.AddScoped<IWorkOrderRepository, WorkOrderRepository>();
 builder.Services.AddScoped<IWorkOrderTaskRepository, WorkOrderTaskRepository>();

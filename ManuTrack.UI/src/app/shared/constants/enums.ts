@@ -1,7 +1,6 @@
 // Mirrors backend enum classes exactly
 
 export const AppRoles = [
-  { value: 'Admin',             label: 'Admin' },
   { value: 'Planner',           label: 'Planner' },
   { value: 'Operator',          label: 'Operator' },
   { value: 'Inspector',         label: 'Inspector' },

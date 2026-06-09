@@ -806,11 +806,10 @@
           <div class="u-name">{{ userName }}</div>
           <div class="u-role">System Administrator</div>
         </div>
+        <button class="signout-btn" (click)="logout()" title="Sign Out">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
       </div>
-      <button class="signout-btn" (click)="logout()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        Sign Out
-      </button>
     </div>
   </aside>
 
@@ -1815,6 +1814,7 @@
             <div class="page-title">Notifications</div>
             <div class="page-sub">System notifications</div>
           </div>
+          <button class="t-btn" style="background:var(--accent);color:#fff;font-weight:600" (click)="showBroadcastModal=true">📢 Broadcast</button>
         </div>
         <div class="summary-strip" style="grid-template-columns:repeat(1,1fr)">
           <div class="sum-card"><div class="sum-accent" style="background:var(--accent)"></div><div class="sum-label">Total</div><div class="sum-val">{{ notifications.length }}</div></div>
@@ -1822,7 +1822,6 @@
         <div class="card">
           <div class="card-head">
             <div class="card-title">All Notifications</div>
-            <button class="t-btn" style="font-size:12px;color:var(--red)" (click)="cleanupNotifications()">🗑 Cleanup Old</button>
           </div>
           <div class="loading-row" *ngIf="notificationsLoading">Loading…</div>
           <div class="error-row" *ngIf="!notificationsLoading && notificationsError">⚠ {{ notificationsError }} <button class="retry-btn" (click)="loadNotifications()">Retry</button></div>
@@ -1844,6 +1843,46 @@
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Broadcast Modal -->
+      <div class="modal-overlay" *ngIf="showBroadcastModal" (click)="showBroadcastModal=false">
+        <div class="modal" style="max-width:480px;width:100%" (click)="$event.stopPropagation()">
+          <div class="modal-head">
+            <div>
+              <div class="modal-title">📢 Broadcast Notification</div>
+              <div class="modal-subtitle">Send a message to all active users</div>
+            </div>
+            <button class="modal-close" (click)="showBroadcastModal=false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+          <form [formGroup]="broadcastForm" (ngSubmit)="broadcastNotification()">
+            <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;padding:20px 24px">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.5px">TITLE <span style="color:var(--red)">*</span></label>
+                <input class="form-input" formControlName="title" placeholder="e.g. System Maintenance" />
+                <span class="field-err" *ngIf="brf['title'].invalid && brf['title'].touched">Title is required (min 3 chars).</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.5px">MESSAGE <span style="color:var(--red)">*</span></label>
+                <textarea class="form-input" formControlName="message" rows="4" placeholder="e.g. System will be under maintenance at 14:00 hrs. Please save your work." style="resize:vertical"></textarea>
+                <span class="field-err" *ngIf="brf['message'].invalid && brf['message'].touched">Message is required (min 5 chars).</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.5px">PRIORITY</label>
+                <select class="form-input" formControlName="priority">
+                  <option value="Normal">Normal</option>
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                </select>
+              </div>
+            </div>
+            <div class="modal-foot">
+              <button type="button" class="t-btn" (click)="showBroadcastModal=false">Cancel</button>
+              <button type="submit" class="t-btn t-btn-primary" [disabled]="broadcastLoading">{{ broadcastLoading ? 'Sending…' : 'Send Broadcast' }}</button>
+            </div>
+          </form>
         </div>
       </div>
 

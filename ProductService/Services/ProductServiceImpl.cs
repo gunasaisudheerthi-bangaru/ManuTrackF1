@@ -115,8 +115,55 @@ public class ProductServiceImpl(
         await LogAuditAsync("Updated Product Status", "Product", id.ToString(),
             $"New Status: {request.Status}");
 
+        // Cancel all active work orders when product is discontinued
+        if (request.Status == ProductStatus.Discontinued)
+            _ = CancelActiveWorkOrdersAsync(id, product.Name);
+
         return ApiResponse<ProductViewModel>.Ok(Map(updated), "Product status updated.");
     }
+
+    private async Task CancelActiveWorkOrdersAsync(int productId, string productName)
+    {
+        try
+        {
+            var woClient = ServiceHelper.CreateAuthorizedClient(httpClientFactory, httpContextAccessor, "WorkOrderService");
+
+            var response = await woClient.GetAsync($"api/v1/workorders?productId={productId}");
+            if (!response.IsSuccessStatusCode) return;
+
+            var result = await response.Content
+                .ReadFromJsonAsync<WorkOrderListResponseDto>(
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            var activeOrders = result?.Data?
+                .Where(w => w.Status == "Pending" || w.Status == "InProgress")
+                .ToList();
+
+            if (activeOrders == null || activeOrders.Count == 0) return;
+
+            foreach (var wo in activeOrders)
+                await woClient.PutAsJsonAsync($"api/v1/workorders/{wo.WorkOrderID}/status", new { Status = "Cancelled" });
+
+            var notifyClient = ServiceHelper.CreateAuthorizedClient(httpClientFactory, httpContextAccessor, "NotificationService");
+            await notifyClient.PostAsJsonAsync("api/v1/notifications/notify-role", new
+            {
+                TargetRole = "Planner",
+                Title = $"Work Orders Cancelled — {productName} Discontinued",
+                Message = $"{activeOrders.Count} active work order(s) for \"{productName}\" have been automatically cancelled because the product was discontinued.",
+                Category = "WorkOrder",
+                Priority = "High"
+            });
+
+            logger.LogInformation("Cancelled {Count} work orders for discontinued product {ProductId}.", activeOrders.Count, productId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to cancel work orders for discontinued product {ProductId}.", productId);
+        }
+    }
+
+    private sealed class WorkOrderListResponseDto { public IEnumerable<WorkOrderSummaryDto>? Data { get; set; } }
+    private sealed class WorkOrderSummaryDto { public int WorkOrderID { get; set; } public string Status { get; set; } = string.Empty; }
 
     public async Task<ApiResponse> DeleteProductAsync(int id)
     {

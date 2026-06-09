@@ -165,54 +165,6 @@ public class WorkOrderServiceImpl(
         return ApiResponse.Ok("Work order deleted successfully.");
     }
 
-    // ── Deduct BOM component stock when WO moves to InProgress ──────────────
-    private async Task DeductBomStockAsync(int productId, decimal woQuantity, int workOrderId)
-    {
-        try
-        {
-            var productClient = ServiceHelper.CreateAuthorizedClient(httpClientFactory, httpContextAccessor, "ProductService");
-            var bomResponse = await productClient.GetAsync($"api/v1/bom?productId={productId}");
-            if (!bomResponse.IsSuccessStatusCode) return;
-
-            var bomResult = await bomResponse.Content
-                .ReadFromJsonAsync<BomListResponseDto>(
-                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            var bomEntries = bomResult?.Data;
-            if (bomEntries == null) return;
-
-            var invClient = ServiceHelper.CreateAuthorizedClient(httpClientFactory, httpContextAccessor, "InventoryService");
-            var invResponse = await invClient.GetAsync("api/v1/inventory");
-            if (!invResponse.IsSuccessStatusCode) return;
-
-            var invResult = await invResponse.Content
-                .ReadFromJsonAsync<InventoryListResponseDto>(
-                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            var inventoryItems = invResult?.Data?.ToList();
-            if (inventoryItems == null) return;
-
-            foreach (var bom in bomEntries)
-            {
-                var invItem = inventoryItems.FirstOrDefault(i => i.ComponentID == bom.ComponentID);
-                if (invItem == null) continue;
-
-                var deduction = -(bom.Quantity * woQuantity);
-                await invClient.PutAsJsonAsync($"api/v1/inventory/{invItem.InventoryID}/adjust", new
-                {
-                    Adjustment = deduction,
-                    Reason = $"WO-{workOrderId} started — consumed {Math.Abs(deduction)} {bom.ComponentUnit} of {bom.ComponentName}"
-                });
-            }
-
-            logger.LogInformation("BOM stock deducted for WO {WorkOrderId}, ProductID {ProductId}.", workOrderId, productId);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "BOM stock deduction failed for WO {WorkOrderId}.", workOrderId);
-        }
-    }
-
     // ── Change 7: Validate passed inspection before Completed ────────────────
     // Returns null if OK, error message string if validation fails
     private async Task<string?> GetInspectionValidationErrorAsync(int workOrderId)
@@ -258,30 +210,6 @@ public class WorkOrderServiceImpl(
         public string? Status { get; set; }
     }
 
-    // ── Local DTOs for BOM + Inventory deduction ──────────────────────────────
-    private sealed class BomListResponseDto
-    {
-        public IEnumerable<BomEntryDto>? Data { get; set; }
-    }
-
-    private sealed class BomEntryDto
-    {
-        public int ComponentID { get; set; }
-        public string ComponentName { get; set; } = string.Empty;
-        public string ComponentUnit { get; set; } = string.Empty;
-        public decimal Quantity { get; set; }
-    }
-
-    private sealed class InventoryListResponseDto
-    {
-        public IEnumerable<InventoryItemDto>? Data { get; set; }
-    }
-
-    private sealed class InventoryItemDto
-    {
-        public int InventoryID { get; set; }
-        public int? ComponentID { get; set; }
-    }
 
     // ── Mapper ───────────────────────────────────────────────────────────────
 

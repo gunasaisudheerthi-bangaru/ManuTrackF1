@@ -54,6 +54,10 @@ export class WorkOrderService {
     return this.http.get<ApiResponse<WorkOrderViewModel[]>>(this.base);
   }
 
+  getById(id: number): Observable<ApiResponse<WorkOrderViewModel>> {
+    return this.http.get<ApiResponse<WorkOrderViewModel>>(`${this.base}/${id}`);
+  }
+
   create(req: CreateWorkOrderRequest): Observable<ApiResponse<WorkOrderViewModel>> {
     return this.http.post<ApiResponse<WorkOrderViewModel>>(this.base, req);
   }

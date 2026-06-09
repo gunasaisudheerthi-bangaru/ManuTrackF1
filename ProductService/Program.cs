@@ -102,6 +102,8 @@ builder.Services.AddHttpClient("InventoryService", client =>
     client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:InventoryService"]!));
 builder.Services.AddHttpClient("NotificationService", client =>
     client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:NotificationService"]!));
+builder.Services.AddHttpClient("WorkOrderService", client =>
+    client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:WorkOrderService"]!));
 
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IBomRepository, BomRepository>();

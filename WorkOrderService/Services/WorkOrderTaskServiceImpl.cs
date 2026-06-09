@@ -108,8 +108,8 @@ public class WorkOrderTaskServiceImpl(
         await LogAuditAsync("Updated Task Status", "WorkOrderTask", id.ToString(),
             $"New Status: {request.Status}");
 
-        // Auto-transition Work Order status when tasks are completed
-        if (request.Status == WorkOrderTaskStatus.Completed)
+        // Auto-transition Work Order status based on task progress
+        if (request.Status == WorkOrderTaskStatus.InProgress || request.Status == WorkOrderTaskStatus.Completed)
         {
             var allTasks = await taskRepo.GetByWorkOrderIdAsync(task.WorkOrderID);
             var order = await workOrderRepo.GetByIdAsync(task.WorkOrderID);
@@ -117,23 +117,25 @@ public class WorkOrderTaskServiceImpl(
             if (order != null && order.Status != WorkOrderStatus.Completed
                                && order.Status != WorkOrderStatus.Cancelled)
             {
-                if (allTasks.Any() && allTasks.All(t => t.Status == WorkOrderTaskStatus.Completed))
+                if (request.Status == WorkOrderTaskStatus.Completed &&
+                    allTasks.Any() && allTasks.All(t => t.Status == WorkOrderTaskStatus.Completed))
                 {
-                    // All tasks done → auto-complete the WO
+                    // All tasks done → auto-complete the WO and deduct BOM stock
                     order.Status = WorkOrderStatus.Completed;
                     await workOrderRepo.UpdateAsync(order);
                     await LogAuditAsync("Auto-Completed WorkOrder", "WorkOrder",
                         task.WorkOrderID.ToString(), "All tasks completed — Work Order auto-marked as Completed.");
-                    _ = NotifyWorkOrderCompletedAsync(task.WorkOrderID);
+                    var token = ServiceHelper.GetBearerToken(httpContextAccessor);
+                    _ = NotifyWorkOrderCompletedAsync(task.WorkOrderID, token);
+                    _ = DeductBomStockAsync(order.ProductID, order.Quantity, order.WorkOrderID, token);
                 }
                 else if (order.Status == WorkOrderStatus.Pending)
                 {
-                    // First task completed → move WO to InProgress and deduct BOM stock
+                    // Any task started → move WO to InProgress (no stock deduction yet)
                     order.Status = WorkOrderStatus.InProgress;
                     await workOrderRepo.UpdateAsync(order);
                     await LogAuditAsync("Auto-Started WorkOrder", "WorkOrder",
-                        task.WorkOrderID.ToString(), "First task completed — Work Order auto-marked as InProgress.");
-                    _ = DeductBomStockAsync(order.ProductID, order.Quantity, order.WorkOrderID);
+                        task.WorkOrderID.ToString(), "Task started — Work Order auto-marked as InProgress.");
                 }
             }
         }
@@ -141,11 +143,13 @@ public class WorkOrderTaskServiceImpl(
         return ApiResponse<WorkOrderTaskViewModel>.Ok(Map(updated), "Task status updated.");
     }
 
-    private async Task DeductBomStockAsync(int productId, decimal woQuantity, int workOrderId)
+    private async Task DeductBomStockAsync(int productId, decimal woQuantity, int workOrderId, string? token)
     {
         try
         {
-            var productClient = ServiceHelper.CreateAuthorizedClient(httpClientFactory, httpContextAccessor, "ProductService");
+            var productClient = httpClientFactory.CreateClient("ProductService");
+            if (token != null) productClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
             var bomResponse = await productClient.GetAsync($"api/v1/bom?productId={productId}");
             if (!bomResponse.IsSuccessStatusCode) return;
 
@@ -156,7 +160,8 @@ public class WorkOrderTaskServiceImpl(
             var bomEntries = bomResult?.Data;
             if (bomEntries == null) return;
 
-            var invClient = ServiceHelper.CreateAuthorizedClient(httpClientFactory, httpContextAccessor, "InventoryService");
+            var invClient = httpClientFactory.CreateClient("InventoryService");
+            if (token != null) invClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             var invResponse = await invClient.GetAsync("api/v1/inventory");
             if (!invResponse.IsSuccessStatusCode) return;
 
@@ -176,7 +181,7 @@ public class WorkOrderTaskServiceImpl(
                 await invClient.PutAsJsonAsync($"api/v1/inventory/{invItem.InventoryID}/adjust", new
                 {
                     Adjustment = deduction,
-                    Reason = $"WO-{workOrderId} started — consumed {Math.Abs(deduction)} {bom.ComponentUnit} of {bom.ComponentName}"
+                    Reason = $"WO-{workOrderId} completed — consumed {Math.Abs(deduction)} {bom.ComponentUnit} of {bom.ComponentName}"
                 });
             }
 
@@ -193,13 +198,14 @@ public class WorkOrderTaskServiceImpl(
     private sealed class InventoryListResponseDto { public IEnumerable<InventoryItemDto>? Data { get; set; } }
     private sealed class InventoryItemDto { public int InventoryID { get; set; } public int? ComponentID { get; set; } }
 
-    private async Task NotifyWorkOrderCompletedAsync(int workOrderId)
+    private async Task NotifyWorkOrderCompletedAsync(int workOrderId, string? token)
     {
         try
         {
             var (userId, _) = ServiceHelper.GetCurrentUser(httpContextAccessor);
             if (userId == 0) return;
-            var client = ServiceHelper.CreateAuthorizedClient(httpClientFactory, httpContextAccessor, "NotificationService");
+            var client = httpClientFactory.CreateClient("NotificationService");
+            if (token != null) client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             await client.PostAsJsonAsync("api/v1/notifications", new
             {
                 UserID = userId,

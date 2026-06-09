@@ -174,8 +174,15 @@ export class OperatorComponent implements OnInit {
       next: () => {
         task.status = status;
         this.showToast(`Task marked as ${status}.`);
-        // Re-load tasks to re-evaluate auto-complete
         this.loadTasks(task.workOrderID);
+        // Refresh WO status from backend so InProgress/Completed reflects immediately
+        this.workOrderSvc.getById(task.workOrderID).subscribe({
+          next: res => {
+            const wo = this.workOrders.find(w => w.workOrderID === task.workOrderID);
+            if (wo && res?.data) { wo.status = res.data.status; this.cdr.detectChanges(); }
+          },
+          error: () => {}
+        });
         this.cdr.detectChanges();
       },
       error: err => this.showToast(err.error?.message ?? 'Failed.', 'error')

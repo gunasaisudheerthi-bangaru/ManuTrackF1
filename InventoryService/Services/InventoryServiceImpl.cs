@@ -130,7 +130,7 @@ public class InventoryServiceImpl(
         return ApiResponse<IEnumerable<StockMovementViewModel>>.Ok(movements.Select(MapMovement));
     }
 
-    public async Task<ApiResponse<InventoryItemViewModel>> CreateAsync(CreateInventoryItemRequest request)
+public async Task<ApiResponse<InventoryItemViewModel>> CreateAsync(CreateInventoryItemRequest request)
     {
         // Validate LocationID if provided
         if (request.LocationID.HasValue)

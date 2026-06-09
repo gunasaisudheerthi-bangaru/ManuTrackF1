@@ -7,6 +7,7 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddJsonFile("ocelot.json", optional: false, reloadOnChange: true);
+builder.Configuration.AddJsonFile($"ocelot.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
 
 // ── JWT Authentication (validate tokens at gateway level) ─────────────────
 var jwtKey = builder.Configuration["Jwt:Key"]!;

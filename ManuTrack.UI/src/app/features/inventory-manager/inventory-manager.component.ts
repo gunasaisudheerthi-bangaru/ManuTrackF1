@@ -205,6 +205,23 @@ export class InventoryManagerComponent implements OnInit {
   get pendingPOCount()  { return this.purchaseOrders.filter(p => p.status==='Pending').length; }
   get activeComponents(){ return this.components.filter(c => c.isActive); }
 
+  /** Only products that have at least one Completed work order AND are not already in inventory */
+  get productsWithCompletedWO(): ProductViewModel[] {
+    const completedProductIds = new Set(
+      this.workOrders
+        .filter(wo => wo.status === 'Completed')
+        .map(wo => wo.productID)
+    );
+    const alreadyAddedIds = new Set(
+      this.inventoryItems
+        .filter(i => i.itemType === 'Product')
+        .map(i => i.productID)
+    );
+    return this.products.filter(p =>
+      completedProductIds.has(p.productID) && !alreadyAddedIds.has(p.productID)
+    );
+  }
+
   loadInventory(): void {
     this.inventoryLoading = true; this.inventoryError = '';
     this.inventorySvc.getAll()

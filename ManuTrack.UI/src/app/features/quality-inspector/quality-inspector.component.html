@@ -33,8 +33,8 @@
         <div class="form-field"><label>Inspection Date</label>
           <input class="form-input" formControlName="inspectionDate" type="date">
           <span class="field-err" *ngIf="if_['inspectionDate'].invalid && if_['inspectionDate'].touched">Required (cannot be in the past).</span></div>
-        <div class="form-field"><label>Inspector</label>
-          <div class="fixed-field"><span class="fixed-field-val">{{ userName }}</span><span class="badge b-active" style="font-size:10px">You</span></div></div>
+        <!--<div class="form-field"><label>Inspector</label>
+          <div class="fixed-field"><span class="fixed-field-val">{{ userName }}</span><span class="badge b-active" style="font-size:10px">You</span></div></div>-->
         <div class="form-field"><label>Notes <span style="color:var(--muted2);font-weight:400">(optional)</span></label>
           <input class="form-input" formControlName="notes" placeholder="Any inspection notes…"></div>
       </div></div>
@@ -57,15 +57,14 @@
       <div class="modal-body"><div class="form-grid" style="grid-template-columns:1fr">
         <div class="form-field"><label>Result</label>
           <div class="result-toggle">
-            <button type="button" class="result-btn pass" [class.active]="rtf['result'].value==='Pass'" (click)="resultForm.patchValue({result:'Pass'})">✓ Pass</button>
-            <button type="button" class="result-btn fail" [class.active]="rtf['result'].value==='Fail'" (click)="resultForm.patchValue({result:'Fail'})">✗ Fail</button>
+            <button type="button" class="result-btn pass" [class.active]="rtf['result'].value==='Pass'" (click)="resultForm.patchValue({result:'Pass', status:'Completed'})">✓ Pass</button>
+            <button type="button" class="result-btn fail" [class.active]="rtf['result'].value==='Fail'" (click)="resultForm.patchValue({result:'Fail', status:'InProgress'})">✗ Fail</button>
           </div>
           <span class="field-err" *ngIf="rtf['result'].invalid && rtf['result'].touched">Select Pass or Fail.</span></div>
         <div class="form-field"><label>Status</label>
           <select class="form-input" formControlName="status">
             <option value="InProgress">InProgress</option>
             <option value="Completed">Completed</option>
-            <option value="Cancelled">Cancelled</option>
           </select></div>
         <div class="form-field"><label>Notes <span style="color:var(--muted2);font-weight:400">(optional)</span></label>
           <input class="form-input" formControlName="notes" placeholder="Inspection findings…"></div>
@@ -280,7 +279,7 @@
                   <th>Inspector Name</th>
                   <th>Result</th>
                   <th>Status</th>
-                  <th>Notes</th>
+                  <!--<th>Notes</th>-->
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -296,15 +295,20 @@
                     <span style="font-size:11px;color:var(--muted2)" *ngIf="!insp.result">—</span>
                   </td>
                   <td><span class="badge" [ngClass]="inspStatusBadge(insp.status)">{{ insp.status }}</span></td>
-                  <td style="font-size:12px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ insp.notes || '—' }}</td>
+                  <!--<td style="font-size:12px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ insp.notes || '—' }}</td>-->
                   <td>
                     <div class="action-btns">
                       <button class="icon-btn" *ngIf="insp.status!=='Completed' && insp.status!=='Cancelled'" (click)="openUpdateResult(insp)">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:12px;height:12px"><polyline points="20 6 9 17 4 12"/></svg>
                         Set Result
                       </button>
-                      <button class="icon-btn" style="color:var(--red);border-color:var(--red-border);background:var(--red-light)"
-                        *ngIf="insp.status!=='Cancelled'" (click)="openLogDefect(insp)">
+                      <button class="icon-btn"
+                        [style]="insp.result==='Pass'
+                          ? 'color:#f0a0a0;border-color:#f5c0c0;background:#fff5f5;cursor:not-allowed;opacity:0.5'
+                          : 'color:var(--red);border-color:var(--red-border);background:var(--red-light)'"
+                        *ngIf="insp.status!=='Cancelled'" (click)="insp.result!=='Pass' && openLogDefect(insp)"
+                        [disabled]="insp.result==='Pass'"
+                        [title]="insp.result==='Pass' ? 'Cannot log defect for a passed inspection' : 'Log Defect'">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:12px;height:12px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                         Log Defect
                       </button>

@@ -179,7 +179,7 @@ export class PlannerComponent implements OnInit {
   }
 
   loadOperators(): void {
-    this.http.get<any>('http://localhost:5000/api/v1/auth/users/by-role/Operator')
+    this.http.get<any>('/api/v1/auth/users/by-role?role=Operator')
       .pipe(timeout(10000))
       .subscribe({
         next: res => {

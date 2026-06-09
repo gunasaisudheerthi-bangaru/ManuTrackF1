@@ -96,6 +96,7 @@ export class QualityInspectorComponent implements OnInit {
       status: ['Completed', Validators.required],
       notes: ['']
     });
+
   }
 
   ngOnInit(): void {
@@ -359,7 +360,10 @@ export class QualityInspectorComponent implements OnInit {
   }
 
   // Only completed WOs are eligible for quality inspection
-  get completedWorkOrders() { return this.workOrders.filter(wo => wo.status === 'Completed'); }
+  get completedWorkOrders() {
+    const inspectedWOIds = new Set(this.inspections.map(i => i.workOrderID));
+    return this.workOrders.filter(wo => wo.status === 'Completed' && !inspectedWOIds.has(wo.workOrderID));
+  }
 
   // ── FILTERS ───────────────────────────────────────────
   inspFilterResult = '';

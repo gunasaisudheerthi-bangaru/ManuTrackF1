@@ -11,7 +11,9 @@
       "Bash(xargs sed -i 's|http://localhost:5000||g')",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\2483413\\\\OneDrive - Cognizant\\\\Desktop\\\\Project\\\\ManuTrack--latest\\\\ManuTrackF1\\\\AuthService\" -Filter \"*.cs\" -Recurse)",
       "Bash(Select-Object -ExpandProperty FullName)",
-      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\2483413\\\\OneDrive - Cognizant\\\\Desktop\\\\Project\\\\ManuTrack--latest\\\\ManuTrackF1\\\\WorkOrderService\" -Filter \"*.cs\" -Recurse)"
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\2483413\\\\OneDrive - Cognizant\\\\Desktop\\\\Project\\\\ManuTrack--latest\\\\ManuTrackF1\\\\WorkOrderService\" -Filter \"*.cs\" -Recurse)",
+      "Bash(xargs grep -l \"Timestamp\")",
+      "Bash(xargs grep -l \"UpdateInspectionResultRequest\")"
     ]
   }
 }

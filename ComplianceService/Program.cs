@@ -122,7 +122,7 @@ using (var scope = app.Services.CreateScope())
 
     // AuditEntries → ManuTrackGovernanceDB
     var auditDb = scope.ServiceProvider.GetRequiredService<AuditDbContext>();
-    auditDb.Database.Migrate();
+    auditDb.Database.EnsureCreated();
 }
 
 app.Run();

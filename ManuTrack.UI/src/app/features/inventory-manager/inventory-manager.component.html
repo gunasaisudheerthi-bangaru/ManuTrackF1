@@ -32,7 +32,7 @@
             <label>Product</label>
             <select class="form-input" formControlName="productID" (change)="onInventoryProductSelect($event)">
               <option value="">Select product…</option>
-              <option *ngFor="let p of products" [value]="p.productID">{{ p.name }} (v{{ p.version }})</option>
+              <option *ngFor="let p of productsWithCompletedWO" [value]="p.productID">{{ p.name }} (v{{ p.version }})</option>
             </select></div>
           <div class="form-field" *ngIf="inventoryForm.value.itemType==='RawMaterial'">
             <label>Raw Material</label>

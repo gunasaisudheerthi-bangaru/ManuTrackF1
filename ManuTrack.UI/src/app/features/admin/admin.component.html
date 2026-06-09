@@ -662,12 +662,17 @@
         <label>Change Status To</label>
         <div class="status-options">
           <label class="status-option" *ngFor="let s of productStatuses"
-            [class.selected]="editProductStatus === s.value" (click)="editProductStatus = s.value">
+            [class.selected]="editProductStatus === s.value"
+            [class.disabled]="s.value==='Draft' && editingProduct?.status==='Active'"
+            [style.opacity]="s.value==='Draft' && editingProduct?.status==='Active' ? '0.4' : '1'"
+            [style.cursor]="s.value==='Draft' && editingProduct?.status==='Active' ? 'not-allowed' : 'pointer'"
+            (click)="s.value==='Draft' && editingProduct?.status==='Active' ? null : editProductStatus = s.value"
+            [title]="s.value==='Draft' && editingProduct?.status==='Active' ? ' - Cannot revert to Draft once Active' : ''">
             <span class="badge" [ngClass]="statusBadgeClass(s.value)">{{ s.label }}</span>
             <span class="status-desc">
-              <span *ngIf="s.value==='Draft'">Not yet published</span>
-              <span *ngIf="s.value==='Active'">Available for work orders &amp; BOMs</span>
-              <span *ngIf="s.value==='Discontinued'">Retired from production</span>
+              <span *ngIf="s.value==='Draft'">{{ editingProduct?.status==='Active' ? 'Cannot revert to Draft' : 'Not yet published' }}</span>
+              <span *ngIf="s.value==='Active'"> - Available for work orders &amp; BOMs</span>
+              <span *ngIf="s.value==='Discontinued'"> - Retired from production</span>
             </span>
           </label>
         </div>
@@ -845,7 +850,9 @@
           <div class="page-title">Admin Overview</div>
           <div class="page-sub">Manage users, products, BOMs and system configuration for ManuTrack</div>
         </div>
-
+        <br />
+        <hr style="border:1px solid var(--border);">
+        <div style="margin:20px"></div>
         <div class="summary-strip" style="grid-template-columns:repeat(6,1fr)">
           <div class="sum-card" (click)="showSection('users')" style="cursor:pointer">
             <div class="sum-accent" style="background:var(--accent)"></div>
@@ -1211,10 +1218,10 @@
                 <span class="badge" [ngClass]="woStatusBadge(wo.status)">{{ wo.status }}</span>
                 <span class="wo-task-count">{{ (tasksByWorkOrder[wo.workOrderID] || []).length }} task{{ (tasksByWorkOrder[wo.workOrderID] || []).length !== 1 ? 's' : '' }}</span>
                 <div class="action-btns" (click)="$event.stopPropagation()">
-                  <button class="icon-btn icon-btn-danger" style="padding: 4px 8px; font-size: 11px; cursor: not-allowed; color: var(--muted) " (click)="deleteWorkOrder(wo)" disabled>
+                  <!--<button class="icon-btn icon-btn-danger" style="padding: 4px 8px; font-size: 11px; cursor: not-allowed; color: var(--muted) " (click)="deleteWorkOrder(wo)" disabled>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:12px;height:12px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
                     Delete
-                  </button>
+                  </button>-->
                 </div>
               </div>
 
@@ -1322,10 +1329,10 @@
         <!-- Low Stock Alert Banner -->
         <div class="low-stock-alert" *ngIf="(lowStockCount + outOfStockCount) > 0 && inventoryTab==='items'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:18px;height:18px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span><strong>{{ lowStockCount + outOfStockCount }} item(s)</strong> need restocking. Create a Purchase Order to replenish stock.</span>
-          <button class="t-btn t-btn-primary" style="font-size:12px;padding:5px 12px;margin-left:auto" (click)="inventoryTab='po'; showPOModal=true; poForm.reset()">
+          <span><strong>{{ lowStockCount + outOfStockCount }} item(s)</strong> need restocking. Ask Inventory Manager to create a Purchase Order to replenish stock.</span>
+          <!--<button class="t-btn t-btn-primary" style="font-size:12px;padding:5px 12px;margin-left:auto" (click)="inventoryTab='po'; showPOModal=true; poForm.reset()">
             + Create Purchase Order
-          </button>
+          </button>-->
         </div>
 
         <!-- Tabs -->
@@ -1350,23 +1357,25 @@
           <div class="loading-row" *ngIf="inventoryLoading">Loading…</div>
           <div class="error-row" *ngIf="!inventoryLoading && inventoryError">⚠ {{ inventoryError }} <button class="retry-btn" (click)="loadInventory()">Retry</button></div>
           <table class="tbl" *ngIf="!inventoryLoading && !inventoryError">
-            <thead>
+            <thead style="width:100%;">
               <tr>
-                <th>INV ID</th><th>Product / Material</th><th>Location</th>
-                <th>Qty On Hand</th><th>Min Qty</th><th>Status</th><th>Actions</th>
+                <th>INV ID</th><th>Product / Material</th>
+                <th>Location</th>
+                <th>Qty On Hand</th><th>Min Qty</th><th>Status</th>
+                <!--<th>Actions</th>-->
               </tr>
             </thead>
             <tbody>
               <tr *ngFor="let item of inventoryItems" [class.row-alert]="item.status==='OutOfStock'" [class.row-warn]="item.status==='LowStock'">
-                <td style="font-family:var(--mono);font-size:12px;color:var(--accent)">INV-{{ item.inventoryID }}</td>
+                <td style="font-family:var(--mono);font-size:12px;color:var(--accent)"><b>INV-{{ item.inventoryID }}</b></td>
                 <td>
                   <div style="font-weight:600">{{ item.productName }}</div>
-                  <div style="display:flex;align-items:center;gap:5px;margin-top:3px">
+                  <!--<div style="display:flex;align-items:center;gap:5px;margin-top:3px">
                     <span class="badge" [ngClass]="item.itemType==='RawMaterial' ? 'b-planner' : 'b-inventory'" style="font-size:10px;padding:1px 6px">
                       {{ item.itemType === 'RawMaterial' ? 'Raw Material' : 'Product' }}
-                    </span>
-                    <span style="font-size:11px;color:var(--muted)" *ngIf="item.notes">{{ item.notes }}</span>
-                  </div>
+                    </span>-->
+                    <!--<span style="font-size:11px;color:var(--muted)" *ngIf="item.notes">{{ item.notes }}</span>-->
+                  <!--</div>-->
                 </td>
                 <td style="font-size:12px;color:var(--muted)">{{ item.locationName || '—' }}</td>
                 <td>
@@ -1374,20 +1383,20 @@
                     <span class="stock-qty" [style.color]="item.status==='OutOfStock' ? 'var(--red)' : item.status==='LowStock' ? 'var(--amber)' : 'var(--green)'">
                       {{ item.quantityOnHand }}
                     </span>
-                    <div class="stock-bar">
+                    <!--<div class="stock-bar">
                       <div class="stock-bar-fill"
                         [style.width]="item.minimumQuantity > 0 ? (item.quantityOnHand / (item.minimumQuantity * 2) * 100 | number:'1.0-0') + '%' : '100%'"
                         [style.background]="item.status==='OutOfStock' ? 'var(--red)' : item.status==='LowStock' ? 'var(--amber)' : 'var(--green)'">
                       </div>
-                    </div>
+                    </div>-->
                   </div>
                 </td>
                 <td style="font-family:var(--mono);font-size:12px;color:var(--muted)">{{ item.minimumQuantity }}</td>
                 <td>
                   <span class="badge" [ngClass]="invStatusBadge(item.status)"><span class="dot"></span> {{ item.status }}</span>
                 </td>
-                <td>
-                  <div class="action-btns">
+                <!--<td>-->
+                  <!--<div class="action-btns">
                     <button class="icon-btn" (click)="openAdjust(item)">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:12px;height:12px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                       Adjust Stock
@@ -1400,8 +1409,8 @@
                     <button class="icon-btn icon-btn-danger" style="padding:4px 8px;font-size:11px" (click)="deleteInventoryItem(item)">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:11px;height:11px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
                     </button>
-                  </div>
-                </td>
+                  </div>-->
+                <!--</td>-->
               </tr>
               <tr *ngIf="inventoryItems.length===0 && !inventoryLoading">
                 <td colspan="7" class="empty-td">No inventory items yet. Add items to start tracking stock.</td>
@@ -1892,7 +1901,7 @@
           <div class="page-title">Audit Logs</div>
           <div class="page-sub">Immutable record of all system actions</div>
         </div>
-
+        <br/>
         <div class="card">
           <div class="card-head">
             <div class="card-title">All Audit Events ({{ auditTotalRecords }})</div>
@@ -1914,7 +1923,7 @@
             <thead><tr><th>Timestamp</th><th>Action</th><th>Entity</th><th>Entity ID</th><th>Performed By</th><th>Service</th></tr></thead>
             <tbody>
               <tr *ngFor="let a of auditLogs">
-                <td style="font-family:var(--mono);font-size:12px;color:var(--muted)">{{ a.timestamp | date:'MMM d · h:mm a' }}</td>
+                <td style="font-family:var(--mono);font-size:12px;color:var(--muted)">{{ a.timestamp | date:'MMM d · h:mm a':'UTC' }}</td>
                 <td><span class="audit-badge" [ngClass]="auditBadgeClass(a.action)">{{ a.action.toUpperCase() }}</span></td>
                 <td style="color:var(--text2)">{{ a.entityType }}</td>
                 <td style="font-family:var(--mono);font-size:12px;color:var(--muted)">{{ a.entityID }}</td>
@@ -1937,7 +1946,7 @@
             <div style="font-size:13px;color:var(--muted)">
               Showing {{ (auditCurrentPage - 1) * auditPageSize + 1 }}–{{ auditCurrentPage * auditPageSize > auditTotalRecords ? auditTotalRecords : auditCurrentPage * auditPageSize }} of {{ auditTotalRecords }} events
             </div>
-            <div style="display:flex;gap:8px;align-items:center">
+            <div style="display:flex;gap:8px;align-items:center;margin:10px;">
               <button class="pg-btn" [disabled]="auditCurrentPage === 1" (click)="auditGoToPage(1)" title="First">«</button>
               <button class="pg-btn" [disabled]="auditCurrentPage === 1" (click)="auditGoToPage(auditCurrentPage - 1)" title="Previous">‹</button>
               <button

@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
@@ -112,7 +112,7 @@ export class AdminComponent implements OnInit {
   bomLoading = false;
   auditLoading = false;
   auditCurrentPage = 1;
-  auditPageSize = 10;
+  auditPageSize = 7;    //For number if pages to show
   auditTotalPages = 1;
   workOrdersLoading = false;
   inventoryLoading = false;

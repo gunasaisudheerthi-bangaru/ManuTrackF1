@@ -120,21 +120,21 @@ public class WorkOrderTaskServiceImpl(
                 if (request.Status == WorkOrderTaskStatus.Completed &&
                     allTasks.Any() && allTasks.All(t => t.Status == WorkOrderTaskStatus.Completed))
                 {
-                    // All tasks done → auto-complete the WO
+                    // All tasks done → auto-complete the WO and deduct BOM stock
                     order.Status = WorkOrderStatus.Completed;
                     await workOrderRepo.UpdateAsync(order);
                     await LogAuditAsync("Auto-Completed WorkOrder", "WorkOrder",
                         task.WorkOrderID.ToString(), "All tasks completed — Work Order auto-marked as Completed.");
                     _ = NotifyWorkOrderCompletedAsync(task.WorkOrderID);
+                    _ = DeductBomStockAsync(order.ProductID, order.Quantity, order.WorkOrderID);
                 }
                 else if (order.Status == WorkOrderStatus.Pending)
                 {
-                    // Any task moved to InProgress or Completed → move WO to InProgress and deduct BOM stock
+                    // Any task started → move WO to InProgress (no stock deduction yet)
                     order.Status = WorkOrderStatus.InProgress;
                     await workOrderRepo.UpdateAsync(order);
                     await LogAuditAsync("Auto-Started WorkOrder", "WorkOrder",
                         task.WorkOrderID.ToString(), "Task started — Work Order auto-marked as InProgress.");
-                    _ = DeductBomStockAsync(order.ProductID, order.Quantity, order.WorkOrderID);
                 }
             }
         }
@@ -177,7 +177,7 @@ public class WorkOrderTaskServiceImpl(
                 await invClient.PutAsJsonAsync($"api/v1/inventory/{invItem.InventoryID}/adjust", new
                 {
                     Adjustment = deduction,
-                    Reason = $"WO-{workOrderId} started — consumed {Math.Abs(deduction)} {bom.ComponentUnit} of {bom.ComponentName}"
+                    Reason = $"WO-{workOrderId} completed — consumed {Math.Abs(deduction)} {bom.ComponentUnit} of {bom.ComponentName}"
                 });
             }
 

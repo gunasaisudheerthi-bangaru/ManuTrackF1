@@ -108,31 +108,90 @@ public class WorkOrderTaskServiceImpl(
         await LogAuditAsync("Updated Task Status", "WorkOrderTask", id.ToString(),
             $"New Status: {request.Status}");
 
-        // Auto-complete Work Order when ALL tasks are Completed
+        // Auto-transition Work Order status when tasks are completed
         if (request.Status == WorkOrderTaskStatus.Completed)
         {
             var allTasks = await taskRepo.GetByWorkOrderIdAsync(task.WorkOrderID);
-            if (allTasks.Any() && allTasks.All(t => t.Status == WorkOrderTaskStatus.Completed))
+            var order = await workOrderRepo.GetByIdAsync(task.WorkOrderID);
+
+            if (order != null && order.Status != WorkOrderStatus.Completed
+                               && order.Status != WorkOrderStatus.Cancelled)
             {
-                var order = await workOrderRepo.GetByIdAsync(task.WorkOrderID);
-                if (order != null && order.Status != WorkOrderStatus.Completed
-                                  && order.Status != WorkOrderStatus.Cancelled)
+                if (allTasks.Any() && allTasks.All(t => t.Status == WorkOrderTaskStatus.Completed))
                 {
+                    // All tasks done → auto-complete the WO
                     order.Status = WorkOrderStatus.Completed;
                     await workOrderRepo.UpdateAsync(order);
-
                     await LogAuditAsync("Auto-Completed WorkOrder", "WorkOrder",
-                        task.WorkOrderID.ToString(),
-                        $"All tasks completed — Work Order auto-marked as Completed.");
-
-                    // Fire-and-forget notification
+                        task.WorkOrderID.ToString(), "All tasks completed — Work Order auto-marked as Completed.");
                     _ = NotifyWorkOrderCompletedAsync(task.WorkOrderID);
+                }
+                else if (order.Status == WorkOrderStatus.Pending)
+                {
+                    // First task completed → move WO to InProgress and deduct BOM stock
+                    order.Status = WorkOrderStatus.InProgress;
+                    await workOrderRepo.UpdateAsync(order);
+                    await LogAuditAsync("Auto-Started WorkOrder", "WorkOrder",
+                        task.WorkOrderID.ToString(), "First task completed — Work Order auto-marked as InProgress.");
+                    _ = DeductBomStockAsync(order.ProductID, order.Quantity, order.WorkOrderID);
                 }
             }
         }
 
         return ApiResponse<WorkOrderTaskViewModel>.Ok(Map(updated), "Task status updated.");
     }
+
+    private async Task DeductBomStockAsync(int productId, decimal woQuantity, int workOrderId)
+    {
+        try
+        {
+            var productClient = ServiceHelper.CreateAuthorizedClient(httpClientFactory, httpContextAccessor, "ProductService");
+            var bomResponse = await productClient.GetAsync($"api/v1/bom?productId={productId}");
+            if (!bomResponse.IsSuccessStatusCode) return;
+
+            var bomResult = await bomResponse.Content
+                .ReadFromJsonAsync<BomListResponseDto>(
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            var bomEntries = bomResult?.Data;
+            if (bomEntries == null) return;
+
+            var invClient = ServiceHelper.CreateAuthorizedClient(httpClientFactory, httpContextAccessor, "InventoryService");
+            var invResponse = await invClient.GetAsync("api/v1/inventory");
+            if (!invResponse.IsSuccessStatusCode) return;
+
+            var invResult = await invResponse.Content
+                .ReadFromJsonAsync<InventoryListResponseDto>(
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            var inventoryItems = invResult?.Data?.ToList();
+            if (inventoryItems == null) return;
+
+            foreach (var bom in bomEntries)
+            {
+                var invItem = inventoryItems.FirstOrDefault(i => i.ComponentID == bom.ComponentID);
+                if (invItem == null) continue;
+
+                var deduction = -(bom.Quantity * woQuantity);
+                await invClient.PutAsJsonAsync($"api/v1/inventory/{invItem.InventoryID}/adjust", new
+                {
+                    Adjustment = deduction,
+                    Reason = $"WO-{workOrderId} started — consumed {Math.Abs(deduction)} {bom.ComponentUnit} of {bom.ComponentName}"
+                });
+            }
+
+            logger.LogInformation("BOM stock deducted for WO {WorkOrderId}.", workOrderId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "BOM stock deduction failed for WO {WorkOrderId}.", workOrderId);
+        }
+    }
+
+    private sealed class BomListResponseDto { public IEnumerable<BomEntryDto>? Data { get; set; } }
+    private sealed class BomEntryDto { public int ComponentID { get; set; } public string ComponentName { get; set; } = string.Empty; public string ComponentUnit { get; set; } = string.Empty; public decimal Quantity { get; set; } }
+    private sealed class InventoryListResponseDto { public IEnumerable<InventoryItemDto>? Data { get; set; } }
+    private sealed class InventoryItemDto { public int InventoryID { get; set; } public int? ComponentID { get; set; } }
 
     private async Task NotifyWorkOrderCompletedAsync(int workOrderId)
     {

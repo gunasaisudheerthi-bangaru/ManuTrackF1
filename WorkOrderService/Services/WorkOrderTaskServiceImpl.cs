@@ -108,8 +108,8 @@ public class WorkOrderTaskServiceImpl(
         await LogAuditAsync("Updated Task Status", "WorkOrderTask", id.ToString(),
             $"New Status: {request.Status}");
 
-        // Auto-transition Work Order status when tasks are completed
-        if (request.Status == WorkOrderTaskStatus.Completed)
+        // Auto-transition Work Order status based on task progress
+        if (request.Status == WorkOrderTaskStatus.InProgress || request.Status == WorkOrderTaskStatus.Completed)
         {
             var allTasks = await taskRepo.GetByWorkOrderIdAsync(task.WorkOrderID);
             var order = await workOrderRepo.GetByIdAsync(task.WorkOrderID);
@@ -117,7 +117,8 @@ public class WorkOrderTaskServiceImpl(
             if (order != null && order.Status != WorkOrderStatus.Completed
                                && order.Status != WorkOrderStatus.Cancelled)
             {
-                if (allTasks.Any() && allTasks.All(t => t.Status == WorkOrderTaskStatus.Completed))
+                if (request.Status == WorkOrderTaskStatus.Completed &&
+                    allTasks.Any() && allTasks.All(t => t.Status == WorkOrderTaskStatus.Completed))
                 {
                     // All tasks done → auto-complete the WO
                     order.Status = WorkOrderStatus.Completed;
@@ -128,11 +129,11 @@ public class WorkOrderTaskServiceImpl(
                 }
                 else if (order.Status == WorkOrderStatus.Pending)
                 {
-                    // First task completed → move WO to InProgress and deduct BOM stock
+                    // Any task moved to InProgress or Completed → move WO to InProgress and deduct BOM stock
                     order.Status = WorkOrderStatus.InProgress;
                     await workOrderRepo.UpdateAsync(order);
                     await LogAuditAsync("Auto-Started WorkOrder", "WorkOrder",
-                        task.WorkOrderID.ToString(), "First task completed — Work Order auto-marked as InProgress.");
+                        task.WorkOrderID.ToString(), "Task started — Work Order auto-marked as InProgress.");
                     _ = DeductBomStockAsync(order.ProductID, order.Quantity, order.WorkOrderID);
                 }
             }
